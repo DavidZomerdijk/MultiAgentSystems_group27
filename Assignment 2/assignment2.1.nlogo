@@ -17,7 +17,7 @@
 ; This template does not contain any global variables, but if you need them you can add them here.
 ; (1) num_of_tiles:    total number of tiles, used to stop the agent
 ; (2) num_of_dtiles:   number of dirty tiles (based on total tiles and percentage given
-globals [num_of_tiles num_of_dtiles]
+globals [num_of_tiles num_of_dtiles g_max_x g_max_y]
 
 breed [ dtiles dtile ]
 breed [ vcleaners vclean ]
@@ -45,19 +45,6 @@ to go
   if not any? vcleaners [ stop ]
   execute-actions
   tick
-
-end
-
-; --- setup dirty tiles
-to setup-tiles
-  set-default-shape dtiles "tile water"
-  set num_of_tiles (max-pxcor + 1) * (max-pycor + 1)
-  set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
-  ask n-of num_of_dtiles patches [
-    sprout-dtiles 1 [
-      set color green
-    ]
-  ]
 
 end
 
@@ -145,8 +132,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-527
-296
+529
+297
 -1
 -1
 51.33333333333334
