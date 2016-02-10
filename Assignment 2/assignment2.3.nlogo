@@ -2,7 +2,7 @@
 ; Assignment 2 Vacuum Cleaner World
 
 ; David Zomderdijk
-; Maurits Bleeker
+; Maurits Bleeker/10694439
 ; Jorg Sander/10881530
 
 
@@ -30,41 +30,48 @@ vcleaners-own [ num_visted new_xcor new_ycor]
 
 ; --- Setup ---
 to setup
-  clear-all
-  set game-over? false
-  setup-patches
-  if game-over? or num_of_obstacles = num_of_tiles [ stop ]
-  setup-vcleaners
-  setup-ticks
+  set num_of_obstacles round (obstacle_pct * num_of_tiles / 100)
+  set num_of_tiles round (max-pxcor + 1) * (max-pycor + 1)
+  set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
+  if-else (num_of_obstacles + num_of_dtiles) >= num_of_tiles
+     [
+       print "Error: here are to many obstacles in the room"
+     ]
+     [
+       print "Setup world"
+       clear-all
+       set game-over? false
+       setup-patches
+       if game-over? or num_of_obstacles = num_of_tiles [ stop ] ; prevent that the vacuum cleaner cannot move when the room is full
+       setup-vcleaners
+       setup-ticks
+     ]
 
 end
-
 
 ; --- Main processing cycle ---
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
-
   execute-actions
+  if count patches with [pcolor = grey] [ stop ]
   tick
-
 end
 
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
-  set num_of_tiles (max-pxcor + 1) * (max-pycor + 1)
+  set num_of_tiles round (max-pxcor + 1) * (max-pycor + 1)
+  set num_of_obstacles round (obstacle_pct * num_of_tiles / 100)
   set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
   ask n-of num_of_dtiles patches [
       set pcolor grey
   ]
   ; next make the obstacles red
-  set num_of_obstacles round (obstacle_pct * num_of_tiles / 100)
-  ask n-of num_of_obstacles patches [
-      set pcolor red
+  ask n-of num_of_obstacles patches with [pcolor != gray] [
+    set pcolor red
   ]
-
 end
 
 
@@ -75,17 +82,9 @@ to setup-vcleaners
   ; set-default-shape vcleaners "footprint other"
   create-vcleaners 1
   [
-    let l_obstacles patches with [ pcolor = red ]
-    setxy random-xcor random-ycor
-    move-to patch-here
+    move-to one-of patches with [ pcolor != red and pcolor != grey ]
     facexy xcor ycor + 1
-    while [ member? patch-here l_obstacles ]
-    [
-      setxy random-xcor random-ycor
-      move-to patch-here
-      facexy xcor ycor + 1
-      ; setxy min-pxcor min-pycor facexy min-pxcor min-pycor + 1
-    ]
+    set color red
   ]
   ; set number of visited tiles to 1
   ask vcleaners [ set num_visted 1 ]
@@ -105,15 +104,12 @@ to execute-actions
   ; You can separate these actions into two different methods if you want, but these methods should only be called from here!
   next-step
   clean-dirt
-  ;move-forward
-
 end
 
 ; decide where to move next
 to next-step
-
   ask vcleaners
-  [ ifelse can-move? 1
+  [ if can-move? 1
     [ ask patch-ahead 1
       [ ifelse pcolor = red
         ; patch ahead is an obstacle, randomly move to right or left
@@ -128,13 +124,17 @@ to next-step
       ]
     ]
     ; vacuum cleaner can still move (no walls ahead) so move to next patch
-    [ ask vcleaners
-      [ ifelse random 100 < 50
-        [ right 90 ] [ left 90 ]
-      ]
-    ]
-  ]
 
+  ]
+  ask vcleaners
+      [ if random 100 > 80
+        [
+          ifelse random 100 < 50
+          [ right 90 ]
+          [ left 90 ]
+        ]
+
+      ]
 end
 
 
@@ -143,11 +143,14 @@ to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
     ifelse num_visted = num_of_tiles
-    [ show num_visted set game-over? true ]
+    [ show num_visted
+      set game-over? true
+    ]
     ; if in upper tile of a column and heading north
     [ifelse ( ycor = max-pycor and heading = 0)
       [ set new_xcor xcor + 1
-        set new_ycor ycor ]
+        set new_ycor ycor
+      ]
       ; in last/first tile in a column "somewhere" in between the grid
       [ ifelse (heading = 90 and (ycor = max-pycor or ycor = min-pycor))
         [ if ycor = max-pycor [ set new_ycor ycor - 1 ]
@@ -166,22 +169,22 @@ to move-forward
           ]
         ]
       ]
-    ; set the new direction of the vacum cleaner
-    facexy new_xcor new_ycor
-    setxy new_xcor new_ycor
-    set num_visted num_visted + 1
+     ;set the new direction of the vacum cleaner
+     facexy new_xcor new_ycor
+     setxy new_xcor new_ycor
+     set num_visted num_visted + 1
     ]
   ]
 
 end
 
 to clean-dirt
+  ; moeten we hier niet iets van een counter bijhouden?
   ask vcleaners [
     if pcolor = grey [
       set pcolor black
     ]
   ]
-
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -265,7 +268,7 @@ dirt_pct
 dirt_pct
 0
 100
-55
+38
 1
 1
 NIL
@@ -280,7 +283,7 @@ obstacle_pct
 obstacle_pct
 0
 100
-20
+21
 1
 1
 NIL
