@@ -42,6 +42,7 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
+  if count patches with [pcolor = grey] = 0 [ stop ]
   if not any? vcleaners [ stop ]
   execute-actions
   tick
@@ -88,9 +89,10 @@ end
 to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
-    if num_visted = num_of_tiles
-    [ show num_visted die ]
-    ; if in upper tile of a column and heading north
+    ifelse num_visted = num_of_tiles
+    [ show num_visted]
+    [
+      ; if in upper tile of a column and heading north
     ifelse ( ycor = max-pycor and heading = 0)
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
@@ -117,7 +119,7 @@ to move-forward
     setxy new_xcor new_ycor
     set num_visted num_visted + 1
     ]
-
+  ]
 end
 
 to clean-dirt
@@ -132,8 +134,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-529
-297
+578
+398
 -1
 -1
 51.33333333333334
@@ -147,9 +149,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-5
+6
 0
-4
+6
 1
 1
 1
@@ -210,7 +212,7 @@ dirt_pct
 dirt_pct
 0
 100
-30
+27
 1
 1
 NIL

@@ -55,7 +55,7 @@ to go
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
   execute-actions
-  if count patches with [pcolor = grey] [ stop ]
+  if count patches with [pcolor = grey] = 0 [ stop ]
   tick
 end
 
@@ -71,6 +71,10 @@ to setup-patches
   ; next make the obstacles red
   ask n-of num_of_obstacles patches with [pcolor != gray] [
     set pcolor red
+  ]
+  ask patches with [pcolor = red] [
+    if count pcolor = red >= 4  of neighbors
+    [ setup-patches ]
   ]
 end
 
@@ -268,7 +272,7 @@ dirt_pct
 dirt_pct
 0
 100
-38
+34
 1
 1
 NIL
@@ -283,7 +287,7 @@ obstacle_pct
 obstacle_pct
 0
 100
-21
+19
 1
 1
 NIL

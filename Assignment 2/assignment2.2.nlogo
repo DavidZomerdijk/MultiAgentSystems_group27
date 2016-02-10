@@ -2,7 +2,7 @@
 ; Assignment 2 Vacuum Cleaner World
 
 ; David Zomderdijk
-; Maurits Bleeker
+; Maurits Bleeker/10694439
 ; Jorg Sander/10881530
 
 
@@ -17,7 +17,7 @@
 ; This template does not contain any global variables, but if you need them you can add them here.
 ; (1) num_of_tiles:    total number of tiles, used to stop the agent
 ; (2) num_of_dtiles:   number of dirty tiles (based on total tiles and percentage given
-globals [num_of_tiles num_of_dtiles]
+globals [num_of_tiles num_of_dtiles g_max_x g_max_y]
 
 breed [ dtiles dtile ]
 breed [ vcleaners vclean ]
@@ -42,22 +42,10 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
+  if count patches with [pcolor = grey] = 0 [ stop ]
   if not any? vcleaners [ stop ]
   execute-actions
   tick
-
-end
-
-; --- setup dirty tiles
-to setup-tiles
-  set-default-shape dtiles "tile water"
-  set num_of_tiles (max-pxcor + 1) * (max-pycor + 1)
-  set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
-  ask n-of num_of_dtiles patches [
-    sprout-dtiles 1 [
-      set color green
-    ]
-  ]
 
 end
 
@@ -77,8 +65,9 @@ to setup-vcleaners
   ; In this method you may create the agents (in this case, there is only 1 agent).
   set-default-shape vcleaners "ufo top"
   create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor min-pycor + 1]
+
   ; set number of visited tiles to 1
-  ask vcleaners [ set num_visted 1 ]
+  ask vcleaners [ set num_visted 1  set color red ]
 end
 
 ; --- Setup ticks ---
@@ -101,9 +90,10 @@ end
 to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
-    if num_visted = num_of_tiles
-    [ show num_visted die ]
-    ; if in upper tile of a column and heading north
+    ifelse num_visted = num_of_tiles
+    [ show num_visted]
+    [
+      ; if in upper tile of a column and heading north
     ifelse ( ycor = max-pycor and heading = 0)
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
@@ -130,7 +120,7 @@ to move-forward
     setxy new_xcor new_ycor
     set num_visted num_visted + 1
     ]
-
+  ]
 end
 
 to clean-dirt
