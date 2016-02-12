@@ -22,10 +22,10 @@ globals [num_of_tiles num_of_dtiles g_max_x g_max_y]
 breed [ dtiles dtile ]
 breed [ vcleaners vclean ]
 ; variables of the vacuum cleaner agent:
-; (1) num_visted:    number of tiles visted
+; (1) num_visited:    number of tiles visited
 ; (2) new_xcor:      the new x-coordinate
 ; (3) new_ycor:      the new y-coordinate
-vcleaners-own [ num_visted new_xcor new_ycor]
+vcleaners-own [ num_visited new_xcor new_ycor]
 
 ; --- Setup ---
 to setup
@@ -33,7 +33,6 @@ to setup
   setup-patches
   setup-vcleaners
   setup-ticks
-
 end
 
 
@@ -42,9 +41,12 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
+
   if not any? vcleaners [ stop ]
   execute-actions
   tick
+  if count patches with [pcolor =  grey]  = 0 [stop]
+  ;if ticks >= 9 [stop]
 
 end
 
@@ -63,9 +65,9 @@ end
 to setup-vcleaners
   ; In this method you may create the agents (in this case, there is only 1 agent).
   set-default-shape vcleaners "ufo top"
-  create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor min-pycor + 1]
+  create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor  min-pycor + 1 ]
   ; set number of visited tiles to 1
-  ask vcleaners [ set num_visted 1 ]
+  ask vcleaners [ set num_visited 1 ]
 end
 
 ; --- Setup ticks ---
@@ -88,19 +90,19 @@ end
 to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
-    if num_visted = num_of_tiles
-    [ show num_visted die ]
+    if num_visited = num_of_tiles
+    [ stop ]
     ; if in upper tile of a column and heading north
-    ifelse ( ycor = max-pycor and heading = 0)
+    ifelse ( ycor = 2 and heading = 0)
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
       ; in last/first tile in a column "somewhere" in between the grid
-      [ ifelse (heading = 90 and (ycor = max-pycor or ycor = min-pycor))
-        [ if ycor = max-pycor [ set new_ycor ycor - 1 ]
-          if ycor = min-pycor [ set new_ycor ycor + 1 ]
+      [ ifelse (heading = 90 and (ycor = 2 or ycor = 0))
+        [ if ycor = 2 [ set new_ycor ycor - 1 ]
+          if ycor = 0 [ set new_ycor ycor + 1 ]
           set new_xcor xcor ]
         ; -- lower bound reached? move to the right
-        [ ifelse heading = 180 and ycor = min-pycor
+        [ ifelse heading = 180 and ycor = 0
           [ set new_ycor ycor
             set new_xcor xcor + 1 ]
           ; move up
@@ -115,7 +117,7 @@ to move-forward
     ; set the new direction of the vacum cleaner
     facexy new_xcor new_ycor
     setxy new_xcor new_ycor
-    set num_visted num_visted + 1
+    set num_visited num_visited + 1
     ]
 
 end
@@ -132,11 +134,11 @@ end
 GRAPHICS-WINDOW
 211
 10
-529
-297
+456
+206
 -1
 -1
-51.33333333333334
+55.0
 1
 10
 1
@@ -147,9 +149,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-5
+2
 0
-4
+2
 1
 1
 1
@@ -210,7 +212,7 @@ dirt_pct
 dirt_pct
 0
 100
-30
+100
 1
 1
 NIL

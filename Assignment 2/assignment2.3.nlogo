@@ -55,7 +55,7 @@ to go
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
   execute-actions
-  if count patches with [pcolor = grey] [ stop ]
+  if count patches with [pcolor = grey] = 0 [ stop ]
   tick
 end
 
