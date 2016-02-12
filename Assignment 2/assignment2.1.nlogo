@@ -41,11 +41,7 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
-<<<<<<< HEAD:Assignment 2/assignment2.1_v2.nlogo
 
-=======
-  if count patches with [pcolor = grey] = 0 [ stop ]
->>>>>>> e3e4ec61dce850e66edb279ed1818a7c52a169c2:Assignment 2/assignment2.1.nlogo
   if not any? vcleaners [ stop ]
   execute-actions
   tick
@@ -94,18 +90,10 @@ end
 to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
-<<<<<<< HEAD:Assignment 2/assignment2.1_v2.nlogo
     if num_visited = num_of_tiles
     [ stop ]
     ; if in upper tile of a column and heading north
     ifelse ( ycor = 2 and heading = 0)
-=======
-    ifelse num_visted = num_of_tiles
-    [ show num_visted]
-    [
-      ; if in upper tile of a column and heading north
-    ifelse ( ycor = max-pycor and heading = 0)
->>>>>>> e3e4ec61dce850e66edb279ed1818a7c52a169c2:Assignment 2/assignment2.1.nlogo
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
       ; in last/first tile in a column "somewhere" in between the grid
@@ -131,7 +119,7 @@ to move-forward
     setxy new_xcor new_ycor
     set num_visited num_visited + 1
     ]
-  ]
+
 end
 
 to clean-dirt
@@ -146,13 +134,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-<<<<<<< HEAD:Assignment 2/assignment2.1_v2.nlogo
 456
 206
-=======
-578
-398
->>>>>>> e3e4ec61dce850e66edb279ed1818a7c52a169c2:Assignment 2/assignment2.1.nlogo
 -1
 -1
 55.0
@@ -166,15 +149,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-<<<<<<< HEAD:Assignment 2/assignment2.1_v2.nlogo
 2
 0
 2
-=======
-6
-0
-6
->>>>>>> e3e4ec61dce850e66edb279ed1818a7c52a169c2:Assignment 2/assignment2.1.nlogo
 1
 1
 1
@@ -235,11 +212,7 @@ dirt_pct
 dirt_pct
 0
 100
-<<<<<<< HEAD:Assignment 2/assignment2.1_v2.nlogo
 100
-=======
-27
->>>>>>> e3e4ec61dce850e66edb279ed1818a7c52a169c2:Assignment 2/assignment2.1.nlogo
 1
 1
 NIL
