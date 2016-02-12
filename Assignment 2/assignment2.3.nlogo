@@ -72,6 +72,10 @@ to setup-patches
   ask n-of num_of_obstacles patches with [pcolor != gray] [
     set pcolor red
   ]
+  ask patches with [pcolor = red] [
+    if count pcolor = red >= 4  of neighbors
+    [ setup-patches ]
+  ]
 end
 
 
@@ -268,7 +272,7 @@ dirt_pct
 dirt_pct
 0
 100
-38
+34
 1
 1
 NIL
@@ -283,7 +287,7 @@ obstacle_pct
 obstacle_pct
 0
 100
-21
+19
 1
 1
 NIL
