@@ -1,7 +1,7 @@
 ; UVA/VU - Multi-Agent Systems
 ; Assignment 2 Vacuum Cleaner World
 
-; David Zomderdijk
+; David Zomderdijk/10290745
 ; Maurits Bleeker/10694439
 ; Jorg Sander/10881530
 
@@ -41,7 +41,8 @@ end
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
-  ; if "all" vacuum cleaners are "dead" stop the program
+  ; if "all" dirt is gone stop the program, this is the decision to stop the program the same as in assigment 1
+  ; we assume here that the agent has a complete information about the world, it knows how many dirt there is in the room. Eventhough it not moves efficient trhough the room
   if count patches with [pcolor = grey] = 0 [ stop ]
   if not any? vcleaners [ stop ]
   execute-actions
@@ -135,8 +136,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-529
-297
+1299
+1632
 -1
 -1
 51.33333333333334
@@ -150,9 +151,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-5
+20
 0
-4
+30
 1
 1
 1
@@ -213,7 +214,7 @@ dirt_pct
 dirt_pct
 0
 100
-30
+43
 1
 1
 NIL

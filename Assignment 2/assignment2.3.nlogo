@@ -1,7 +1,7 @@
 ; UVA/VU - Multi-Agent Systems
 ; Assignment 2 Vacuum Cleaner World
 
-; David Zomderdijk
+; David Zomderdijk/10290745
 ; Maurits Bleeker/10694439
 ; Jorg Sander/10881530
 
@@ -35,7 +35,8 @@ to setup
   set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
   if-else (num_of_obstacles + num_of_dtiles) >= num_of_tiles
      [
-       print "Error: here are to many obstacles in the room"
+       ; if there is more dirt + obstacles in the room then patches, the world is not possible to create, therefor we stop the setup function
+       print "Error: There are to many obstacles in the room"
      ]
      [
        print "Setup world"
@@ -53,9 +54,10 @@ end
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
-  ; if "all" vacuum cleaners are "dead" stop the program
+  ; if all dirt  is doen stop the program or if after 20000 ticks the room is not clean yet we assume that there are cells that the agent cannot access, therefor we stop as well.
+  ; we assume here that the agent has a complete information about the world, it knows how many dirt there is in the room. Eventhough it not moves efficient trhough the room
   execute-actions
-  if count patches with [pcolor = grey] = 0 [ stop ]
+  if count patches with [pcolor = grey] = 0 or ticks >= 20000 [ stop ]
   tick
 end
 
@@ -71,10 +73,6 @@ to setup-patches
   ; next make the obstacles red
   ask n-of num_of_obstacles patches with [pcolor != gray] [
     set pcolor red
-  ]
-  ask patches with [pcolor = red] [
-    if count pcolor = red >= 4  of neighbors
-    [ setup-patches ]
   ]
 end
 
@@ -132,6 +130,8 @@ to next-step
   ]
   ask vcleaners
       [ if random 100 > 80
+        ; in 80% of the cases do nothing, else decide random to go so make the move you should do, in the other 20% of the case go random left or right. In the case there is an obstable it is possible that the decision to go left or right is made twice(see code above).
+        ; but this should not matter for the result.
         [
           ifelse random 100 < 50
           [ right 90 ]
@@ -183,7 +183,6 @@ to move-forward
 end
 
 to clean-dirt
-  ; moeten we hier niet iets van een counter bijhouden?
   ask vcleaners [
     if pcolor = grey [
       set pcolor black
@@ -287,7 +286,7 @@ obstacle_pct
 obstacle_pct
 0
 100
-19
+59
 1
 1
 NIL

@@ -1,8 +1,8 @@
 ; UVA/VU - Multi-Agent Systems
 ; Assignment 2 Vacuum Cleaner World
 
-; David Zomderdijk
-; Maurits Bleeker
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
 ; Jorg Sander/10881530
 
 
@@ -17,7 +17,7 @@
 ; This template does not contain any global variables, but if you need them you can add them here.
 ; (1) num_of_tiles:    total number of tiles, used to stop the agent
 ; (2) num_of_dtiles:   number of dirty tiles (based on total tiles and percentage given
-globals [num_of_tiles num_of_dtiles g_max_x g_max_y]
+globals [num_of_tiles num_of_dtiles g_max_x g_max_y exit]
 
 breed [ dtiles dtile ]
 breed [ vcleaners vclean ]
@@ -33,6 +33,7 @@ to setup
   setup-patches
   setup-vcleaners
   setup-ticks
+  set exit false
 end
 
 
@@ -41,12 +42,14 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
   ; if "all" vacuum cleaners are "dead" stop the program
-
-  if not any? vcleaners [ stop ]
+  if not any? vcleaners or exit [ stop ]
   execute-actions
+  if count patches with [pcolor =  grey]  = 0 [ stop ]
   tick
-  if count patches with [pcolor =  grey]  = 0 [stop]
-  ;if ticks >= 9 [stop]
+  ; stop the loop when all dirt (gray pathces) is gone, this will result that in some sitations the vacuum cleaner will not end up in patch (2,2) right top-right corner
+  ; but this is not a problem
+  ; we assume here that the agent has a complete information about the world, it knows how many dirt there is in the room. Eventhough it not moves efficient trhough the room
+
 
 end
 
@@ -64,7 +67,7 @@ end
 ; --- Setup turtles ---
 to setup-vcleaners
   ; In this method you may create the agents (in this case, there is only 1 agent).
-  set-default-shape vcleaners "ufo top"
+  set-default-shape vcleaners "ufo top" ; proper  way to visualise the vacuum cleaner
   create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor  min-pycor + 1 ]
   ; set number of visited tiles to 1
   ask vcleaners [ set num_visited 1 ]
@@ -73,7 +76,6 @@ end
 ; --- Setup ticks ---
 to setup-ticks
   ; In this method you may start the tick counter.
-
   reset-ticks
 end
 
@@ -90,9 +92,10 @@ end
 to move-forward
   ask vcleaners [
     ; if vacuum cleaner visisted all tiles, stop
-    if num_visited = num_of_tiles
-    [ stop ]
+
     ; if in upper tile of a column and heading north
+    ; the agent will stop afer all the dirt is gone, it will respond on the envoirment. When there is no more dirt to clean, it will stop.
+    if count patches with [pcolor =  grey]  != 0 [
     ifelse ( ycor = 2 and heading = 0)
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
@@ -114,15 +117,16 @@ to move-forward
           ]
         ]
       ]
-    ; set the new direction of the vacum cleaner
+    ; set the new direction of the vacuum cleaner
     facexy new_xcor new_ycor
     setxy new_xcor new_ycor
     set num_visited num_visited + 1
     ]
-
+  ]
 end
 
 to clean-dirt
+  ; set a grey patch to black if the vacuum cleaner is on a gray patchs
   ask vcleaners [
     if pcolor = grey [
       set pcolor black
@@ -212,7 +216,7 @@ dirt_pct
 dirt_pct
 0
 100
-100
+30
 1
 1
 NIL
