@@ -17,7 +17,8 @@
 ; This template does not contain any global variables, but if you need them you can add them here.
 ; (1) num_of_tiles:    total number of tiles, used to stop the agent
 ; (2) num_of_dtiles:   number of dirty tiles (based on total tiles and percentage given
-globals [num_of_tiles num_of_dtiles g_max_x g_max_y]
+; (3) exit: boolean that is true when the agent has visited the last patch in the environment
+globals [num_of_tiles num_of_dtiles exit]
 
 breed [ dtiles dtile ]
 breed [ vcleaners vclean ]
@@ -25,7 +26,7 @@ breed [ vcleaners vclean ]
 ; (1) num_visted:    number of tiles visted
 ; (2) new_xcor:      the new x-coordinate
 ; (3) new_ycor:      the new y-coordinate
-vcleaners-own [ num_visted new_xcor new_ycor]
+vcleaners-own [ num_visited new_xcor new_ycor]
 
 ; --- Setup ---
 to setup
@@ -33,7 +34,7 @@ to setup
   setup-patches
   setup-vcleaners
   setup-ticks
-
+  set exit false
 end
 
 
@@ -41,13 +42,10 @@ end
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
-  ; if "all" dirt is gone stop the program, this is the decision to stop the program the same as in assigment 1
-  ; we assume here that the agent has a complete information about the world, it knows how many dirt there is in the room. Eventhough it not moves efficient trhough the room
-  if count patches with [pcolor = grey] = 0 [ stop ]
-  if not any? vcleaners [ stop ]
+  ; if "exit" is true, this means that all patches in the envorinment are visited, stop the simulation
+   if exit [ stop ]
   execute-actions
   tick
-
 end
 
 ; --- Setup patches ---
@@ -65,10 +63,8 @@ end
 to setup-vcleaners
   ; In this method you may create the agents (in this case, there is only 1 agent).
   set-default-shape vcleaners "ufo top"
-  create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor min-pycor + 1]
-
   ; set number of visited tiles to 1
-  ask vcleaners [ set num_visted 1  set color red ]
+  create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor min-pycor + 1 set color red set num_visited 1]
 end
 
 ; --- Setup ticks ---
@@ -90,11 +86,11 @@ end
 ; --- Move agent ---
 to move-forward
   ask vcleaners [
-    ; if vacuum cleaner visisted all tiles, stop
-    ifelse num_visted = num_of_tiles
-    [ show num_visted]
-    [
-      ; if in upper tile of a column and heading north
+    ; while vacuum cleaner has not visisted all tiles, continue with moving
+    ; beause our agent cleans the dirt after he entered the patch we have to make sure that he not continues after he entered the last patch
+    ; but that will will clean that patch
+    if num_visited != num_of_tiles [
+    ; if in upper tile of a column and heading north
     ifelse ( ycor = max-pycor and heading = 0)
       [ set new_xcor xcor + 1
         set new_ycor ycor ]
@@ -119,9 +115,11 @@ to move-forward
     ; set the new direction of the vacum cleaner
     facexy new_xcor new_ycor
     setxy new_xcor new_ycor
-    set num_visted num_visted + 1
     ]
-  ]
+    set num_visited num_visited + 1
+    if num_visited = num_of_tiles + 1 [set exit true]
+    ]
+
 end
 
 to clean-dirt
@@ -136,8 +134,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-1299
-1632
+1296
+1628
 -1
 -1
 51.33333333333334
@@ -214,7 +212,7 @@ dirt_pct
 dirt_pct
 0
 100
-43
+75
 1
 1
 NIL

@@ -54,9 +54,10 @@ end
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
-  ; if all dirt  is doen stop the program or if after 20000 ticks the room is not clean yet we assume that there are cells that the agent cannot access, therefor we stop as well.
+  ; if all dirt  is gone stop the program or if after 20000 ticks the room is not clean yet we assume that there are cells that the agent cannot access, therefor we stop as well.
   ; we assume here that the agent has a complete information about the world, it knows how many dirt there is in the room. Eventhough it not moves efficient trhough the room
   execute-actions
+  ; this assumption will not hold for extremely large worlds, like a 30X30 grid
   if count patches with [pcolor = grey] = 0 or ticks >= 20000 [ stop ]
   tick
 end
@@ -193,8 +194,8 @@ end
 GRAPHICS-WINDOW
 211
 10
-529
-297
+528
+400
 -1
 -1
 51.33333333333334
@@ -210,7 +211,7 @@ GRAPHICS-WINDOW
 0
 5
 0
-4
+6
 1
 1
 1
@@ -286,7 +287,7 @@ obstacle_pct
 obstacle_pct
 0
 100
-59
+16
 1
 1
 NIL
