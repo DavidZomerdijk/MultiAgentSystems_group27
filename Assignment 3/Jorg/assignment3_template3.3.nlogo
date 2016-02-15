@@ -20,9 +20,7 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
-; 3) num_of_tiles: total number of tiles in the envoirment
-; 4) num_of_dtiles: number of dirty tiles in the envoirment
-globals [total_dirty time num_of_tiles exit]
+globals [total_dirty time]
 
 
 ; --- Agents ---
@@ -43,13 +41,10 @@ vacuums-own [beliefs desire intention]
 
 ; --- Setup ---
 to setup
-  clear-all
   set time 0
   setup-patches
   setup-vacuums
   setup-ticks
-  set time 0
-  set exit false
 end
 
 
@@ -60,11 +55,7 @@ to go
   update-desires
   update-beliefs
   update-intentions
-  if exit
-    [ stop ]
   execute-actions
-  update-beliefs
-  set time time + 1
   tick
 end
 
@@ -72,29 +63,17 @@ end
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
-  set num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
-  set total_dirty round (dirt_pct * num_of_tiles / 100)
-  ask n-of num_of_dtiles patches [
-      set pcolor grey
-  ]
 end
 
 
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
-  set-default-shape vacuums "ufo top" ; proper  way to visualise the vacuum cleaner
-  ; set the vacuum cleaner on a 'clean' tile
-  create-vacuums 1 [
-    move-to one-of patches with [ pcolor != grey ]
-    facexy xcor ycor + 1
-    set color red ]
 end
 
 
 ; --- Setup ticks ---
 to setup-ticks
-  reset-ticks
   ; In this method you may start the tick counter.
 end
 
@@ -104,16 +83,6 @@ to update-desires
   ; You should update your agent's desires here.
   ; At the beginning your agent should have the desire to clean all the dirt.
   ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
-
-  ; desires should be a list of all dirty patches
-  ask vacuums [
-    ifelse count patches with [pcolor = grey] >= 1
-        ; the desire is clean all the  dirty patches in the environmnet. If this desire is true, there are dirty patches left, if not then all the dirt is gone and the desire to clean the envoriment is false
-        [ set desire true ]
-        [ set desire false
-          set exit true
-        ]
-  ]
 end
 
 
@@ -123,9 +92,6 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
- ask vacuums [
-   set beliefs patch-set patches with [pcolor = grey]
- ]
 end
 
 
@@ -133,31 +99,12 @@ end
 to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
-  ask vacuums [
-    if intention = 0
-    [ set intention min-one-of patches with [ pcolor = grey ] [ distance myself ] ]
-  ]
 end
 
 
 ; --- Execute actions ---
 to execute-actions
-  ask vacuums [
-    face intention
-    forward 1
-  ]
-  clean-dirt
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
-end
-
-to clean-dirt
-  ask vacuums [
-    if pcolor = grey [
-      set pcolor black
-      set intention  0
-      set total_dirty total_dirty - 1
-    ]
- ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -196,7 +143,7 @@ dirt_pct
 dirt_pct
 0
 100
-32
+0
 1
 1
 NIL

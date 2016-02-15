@@ -20,9 +20,7 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
-; 3) num_of_tiles: total number of tiles, used to stop the agent
-; 4) num_of_dtiles:     number of dirty tiles (based on total tiles and percentage given
-globals [total_dirty time num_of_tiles num_of_dtiles]
+globals [total_dirty time]
 
 
 ; --- Agents ---
@@ -64,27 +62,13 @@ end
 
 ; --- Setup patches ---
 to setup-patches
-  clear-all
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
-  set num_of_tiles round ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
-  set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
-  ask n-of num_of_dtiles patches [
-      set pcolor grey
-  ]
 end
 
 
 ; --- Setup vacuums ---
 to setup-vacuums
-  ; In this method you may create the agents (in this case, there is only 1 agent).
-  set-default-shape vacuums "ufo top"
-  ; set-default-shape vcleaners "footprint other"
-  create-vacuums 1
-  [
-    move-to one-of patches with [ pcolor != grey ]
-    facexy xcor ycor + 1
-    set color red
-  ]
+  ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
 end
 
 
@@ -108,10 +92,6 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
- ask turtles [
-    ask one-of patches with [pcolor = grey]
-     [set beliefs [pxcor pycor]]
- ]
 end
 
 
@@ -163,7 +143,7 @@ dirt_pct
 dirt_pct
 0
 100
-88
+0
 1
 1
 NIL
