@@ -59,9 +59,9 @@ to go
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
   update-beliefs
+  update-intentions
   if exit
     [ stop ]
-  update-intentions
   execute-actions
   update-beliefs
   set time time + 1
@@ -135,10 +135,7 @@ to update-intentions
   ; The agent's intentions should be dependent on its beliefs and desires.
   ask vacuums [
     if intention = 0
-    [
-     set beliefs sort-on [ distance myself ] beliefs
-     set intention first beliefs
-    ]
+    [ set intention one-of beliefs ]
   ]
 end
 
