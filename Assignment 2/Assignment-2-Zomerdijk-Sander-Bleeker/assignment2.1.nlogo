@@ -1,11 +1,9 @@
 ; UVA/VU - Multi-Agent Systems
-; Lecturers: T. Bosse & M.C.A. Klein
-; Lab assistants: D. Formolo & L. Medeiros
+; Assignment 2 Vacuum Cleaner World
 
-
-; --- Assignment 2 - Template ---
-; Please use this template as a basis for the code to generate the behaviour of your smart vacuum cleaner.
-; Of course, your final solution could use more methods than the ones below.
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
 
 
 ; --- Settable variables ---
@@ -17,14 +15,27 @@
 
 ; --- Global variables ---
 ; This template does not contain any global variables, but if you need them you can add them here.
-globals []
+; Added globals:
+; (1) num_of_tiles:    total number of tiles, used to stop the agent
+; (2) num_of_dtiles:   number of dirty tiles (based on total tiles and percentage given
+; (3) exit: boolean that is true when the agent has visited the last patch in the environment
+globals [num_of_tiles num_of_dtiles exit]
 
+breed [ dtiles dtile ]
+breed [ vcleaners vclean ]
+; variables of the vacuum cleaner agent:
+; (1) num_visited:    number of tiles visited
+; (2) new_xcor:      the new x-coordinate
+; (3) new_ycor:      the new y-coordinate
+vcleaners-own [ num_visited new_xcor new_ycor]
 
 ; --- Setup ---
 to setup
+  clear-all
   setup-patches
-  setup-turtles
+  setup-vcleaners
   setup-ticks
+  set exit false
 end
 
 
@@ -32,26 +43,35 @@ end
 to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
+  ; if "exit" is true, this means that all patches in the envorinment are visited, stop the simulation
+  if exit [ stop ]
   execute-actions
   tick
 end
 
-
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
+  set num_of_tiles (max-pxcor + 1) * (max-pycor + 1)
+  set num_of_dtiles round (dirt_pct * num_of_tiles / 100)
+  ask n-of num_of_dtiles patches [
+      set pcolor grey
+  ]
 end
 
 
 ; --- Setup turtles ---
-to setup-turtles
+to setup-vcleaners
   ; In this method you may create the agents (in this case, there is only 1 agent).
+  set-default-shape vcleaners "ufo top" ; proper  way to visualise the vacuum cleaner
+  ; set number of visited tiles to 1
+  create-vcleaners 1 [setxy min-pxcor min-pycor facexy min-pxcor  min-pycor + 1  set color red set num_visited 1]
 end
-
 
 ; --- Setup ticks ---
 to setup-ticks
   ; In this method you may start the tick counter.
+  reset-ticks
 end
 
 
@@ -59,16 +79,65 @@ end
 to execute-actions
   ; Here you should put the code related to the actions performed by your smart vacuum cleaner: moving and cleaning.
   ; You can separate these actions into two different methods if you want, but these methods should only be called from here!
+  clean-dirt
+  move-forward
+end
+
+; --- Move agent ---
+to move-forward
+  ask vcleaners [
+    ; while vacuum cleaner has not visisted all tiles, continue with moving
+    ; beause our agent cleans the dirt after he entered the patch we have to make sure that he not continues after he entered the last patch
+    ; but that will will clean that patch
+    if num_visited != num_of_tiles [
+    ; if in upper tile of a column and heading north
+    ifelse ( ycor = 2 and heading = 0)
+      [ set new_xcor xcor + 1
+        set new_ycor ycor ]
+      ; in last/first tile in a column "somewhere" in between the grid
+      [ ifelse (heading = 90 and (ycor = 2 or ycor = 0))
+        [ if ycor = 2 [ set new_ycor ycor - 1 ]
+          if ycor = 0 [ set new_ycor ycor + 1 ]
+          set new_xcor xcor ]
+        ; -- lower bound reached? move to the right
+        [ ifelse heading = 180 and ycor = 0
+          [ set new_ycor ycor
+            set new_xcor xcor + 1 ]
+          ; move up
+          [ifelse heading = 0
+           [ set new_ycor ycor + 1
+             set new_xcor xcor]
+           ; move down
+           [ if heading = 180 [ set new_ycor ycor - 1 set new_xcor xcor ] ]
+          ]
+        ]
+      ]
+    ; set the new direction of the vacuum cleaner
+    facexy new_xcor new_ycor
+    setxy new_xcor new_ycor
+    ]
+    set num_visited num_visited + 1
+    if num_visited = num_of_tiles + 1 [set exit true]
+  ]
+end
+
+to clean-dirt
+  ; set a grey patch to black if the vacuum cleaner is on a gray patchs
+  ask vcleaners [
+    if pcolor = grey [
+      set pcolor black
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+211
 10
-455
-195
+456
+206
 -1
 -1
-51.33333333333334
+55.0
 1
 10
 1
@@ -142,7 +211,7 @@ dirt_pct
 dirt_pct
 0
 100
-50
+64
 1
 1
 NIL
@@ -418,6 +487,17 @@ Circle -7500403 true true 60 60 180
 Circle -16777216 true false 90 90 120
 Circle -7500403 true true 120 120 60
 
+tile water
+false
+0
+Rectangle -7500403 true true -1 0 299 300
+Polygon -1 true false 105 259 180 290 212 299 168 271 103 255 32 221 1 216 35 234
+Polygon -1 true false 300 161 248 127 195 107 245 141 300 167
+Polygon -1 true false 0 157 45 181 79 194 45 166 0 151
+Polygon -1 true false 179 42 105 12 60 0 120 30 180 45 254 77 299 93 254 63
+Polygon -1 true false 99 91 50 71 0 57 51 81 165 135
+Polygon -1 true false 194 224 258 254 295 261 211 221 144 199
+
 tree
 false
 0
@@ -463,6 +543,30 @@ Polygon -10899396 true false 105 90 75 75 55 75 40 89 31 108 39 124 60 105 75 10
 Polygon -10899396 true false 132 85 134 64 107 51 108 17 150 2 192 18 192 52 169 65 172 87
 Polygon -10899396 true false 85 204 60 233 54 254 72 266 85 252 107 210
 Polygon -7500403 true true 119 75 179 75 209 101 224 135 220 225 175 261 128 261 81 224 74 135 88 99
+
+ufo top
+false
+0
+Circle -1 true false 15 15 270
+Circle -16777216 false false 15 15 270
+Circle -7500403 true true 75 75 150
+Circle -16777216 false false 75 75 150
+Circle -7500403 true true 60 60 30
+Circle -7500403 true true 135 30 30
+Circle -7500403 true true 210 60 30
+Circle -7500403 true true 240 135 30
+Circle -7500403 true true 210 210 30
+Circle -7500403 true true 135 240 30
+Circle -7500403 true true 60 210 30
+Circle -7500403 true true 30 135 30
+Circle -16777216 false false 30 135 30
+Circle -16777216 false false 60 210 30
+Circle -16777216 false false 135 240 30
+Circle -16777216 false false 210 210 30
+Circle -16777216 false false 240 135 30
+Circle -16777216 false false 210 60 30
+Circle -16777216 false false 135 30 30
+Circle -16777216 false false 60 60 30
 
 wheel
 false

@@ -3,9 +3,9 @@
 ; Lab assistants: D. Formolo & L. Medeiros
 
 
-; --- Assignment 2 - Template ---
+; --- Assignment 3 - Template ---
 ; Please use this template as a basis for the code to generate the behaviour of your smart vacuum cleaner.
-; Of course, your final solution could use more methods than the ones below.
+; However, feel free to extend this with any variable or method you think is necessary.
 
 
 ; --- Settable variables ---
@@ -16,14 +16,34 @@
 
 
 ; --- Global variables ---
-; This template does not contain any global variables, but if you need them you can add them here.
-globals []
+; The following global variables are given.
+;
+; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
+; 2) time: the total simulation time.
+globals [total_dirty time]
+
+
+; --- Agents ---
+; The following types of agent (called 'breeds' in NetLogo) are given. (Note: in Assignment 3.3, you could implement the garbage can as an agent as well.)
+;
+; 1) vacuums: vacuum cleaner agents.
+breed [vacuums vacuum]
+
+
+; --- Local variables ---
+; The following local variables are given. (Note: you might need additional local variables (e.g., to keep track of how many pieces of dirt are in the bag in Assignment 3.3). You could represent this as another belief, but it this is inconvenient you may also use another name for it.)
+;
+; 1) beliefs: the agent's belief base about locations that contain dirt
+; 2) desire: the agent's current desire
+; 3) intention: the agent's current intention
+vacuums-own [beliefs desire intention]
 
 
 ; --- Setup ---
 to setup
+  set time 0
   setup-patches
-  setup-turtles
+  setup-vacuums
   setup-ticks
 end
 
@@ -31,7 +51,10 @@ end
 ; --- Main processing cycle ---
 to go
   ; This method executes the main processing cycle of an agent.
-  ; For Assignment 2, this only involves the execution of actions (and advancing the tick counter).
+  ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
+  update-desires
+  update-beliefs
+  update-intentions
   execute-actions
   tick
 end
@@ -43,9 +66,9 @@ to setup-patches
 end
 
 
-; --- Setup turtles ---
-to setup-turtles
-  ; In this method you may create the agents (in this case, there is only 1 agent).
+; --- Setup vacuums ---
+to setup-vacuums
+  ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
 end
 
 
@@ -55,98 +78,182 @@ to setup-ticks
 end
 
 
+; --- Update desires ---
+to update-desires
+  ; You should update your agent's desires here.
+  ; At the beginning your agent should have the desire to clean all the dirt.
+  ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+end
+
+
+; --- Update desires ---
+to update-beliefs
+ ; You should update your agent's beliefs here.
+ ; At the beginning your agent will receive global information about where all the dirty locations are.
+ ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
+ ; In Assignment 3.3, your agent also needs to know where is the garbage can.
+end
+
+
+; --- Update intentions ---
+to update-intentions
+  ; You should update your agent's intentions here.
+  ; The agent's intentions should be dependent on its beliefs and desires.
+end
+
+
 ; --- Execute actions ---
 to execute-actions
-  ; Here you should put the code related to the actions performed by your smart vacuum cleaner: moving and cleaning.
-  ; You can separate these actions into two different methods if you want, but these methods should only be called from here!
+  ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-455
-195
--1
--1
-51.33333333333334
+782
+17
+1382
+638
+12
+12
+23.6
 1
 10
 1
 1
 1
 0
-1
-1
-1
 0
-2
 0
-2
+1
+-12
+12
+-12
+12
 1
 1
 1
 ticks
 30.0
 
-BUTTON
-8
-10
-71
-43
-setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-80
-10
-143
-43
-go
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-MONITOR
-7
-103
-177
-148
-dirt
-count patches with [pcolor = grey]
-17
-1
-11
-
 SLIDER
-7
-60
-179
-93
+11
+49
+777
+82
 dirt_pct
 dirt_pct
 0
 100
-50
+0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+11
+17
+395
+50
+NIL
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+394
+17
+777
+50
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+12
+115
+778
+160
+Number of dirty cells left.
+total_dirty
+17
+1
+11
+
+BUTTON
+11
+82
+777
+115
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+12
+160
+778
+205
+The agent's current desire.
+[desire] of vacuum 0
+17
+1
+11
+
+MONITOR
+12
+205
+778
+250
+The agent's current belief base.
+[beliefs] of vacuum 0
+1000
+1
+11
+
+MONITOR
+12
+295
+778
+340
+Total simulation time.
+time
+17
+1
+11
+
+MONITOR
+12
+250
+778
+295
+The agent's current intention.
+[intention] of vacuum 0
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -327,6 +434,23 @@ Circle -16777216 true false 113 68 74
 Polygon -10899396 true false 189 233 219 188 249 173 279 188 234 218
 Polygon -10899396 true false 180 255 150 210 105 210 75 240 135 240
 
+garbage-can
+false
+0
+Polygon -16777216 false false 60 240 66 257 90 285 134 299 164 299 209 284 234 259 240 240
+Rectangle -7500403 true true 60 75 240 240
+Polygon -7500403 true true 60 238 66 256 90 283 135 298 165 298 210 283 235 256 240 238
+Polygon -7500403 true true 60 75 66 57 90 30 135 15 165 15 210 30 235 57 240 75
+Polygon -7500403 true true 60 75 66 93 90 120 135 135 165 135 210 120 235 93 240 75
+Polygon -16777216 false false 59 75 66 57 89 30 134 15 164 15 209 30 234 56 239 75 235 91 209 120 164 135 134 135 89 120 64 90
+Line -16777216 false 210 120 210 285
+Line -16777216 false 90 120 90 285
+Line -16777216 false 125 131 125 296
+Line -16777216 false 65 93 65 258
+Line -16777216 false 175 131 175 296
+Line -16777216 false 235 93 235 258
+Polygon -16777216 false false 112 52 112 66 127 51 162 64 170 87 185 85 192 71 180 54 155 39 127 36
+
 house
 false
 0
@@ -463,6 +587,37 @@ Polygon -10899396 true false 105 90 75 75 55 75 40 89 31 108 39 124 60 105 75 10
 Polygon -10899396 true false 132 85 134 64 107 51 108 17 150 2 192 18 192 52 169 65 172 87
 Polygon -10899396 true false 85 204 60 233 54 254 72 266 85 252 107 210
 Polygon -7500403 true true 119 75 179 75 209 101 224 135 220 225 175 261 128 261 81 224 74 135 88 99
+
+ufo top
+false
+0
+Circle -1 true false 15 15 270
+Circle -16777216 false false 15 15 270
+Circle -7500403 true true 75 75 150
+Circle -16777216 false false 75 75 150
+Circle -7500403 true true 60 60 30
+Circle -7500403 true true 135 30 30
+Circle -7500403 true true 210 60 30
+Circle -7500403 true true 240 135 30
+Circle -7500403 true true 210 210 30
+Circle -7500403 true true 135 240 30
+Circle -7500403 true true 60 210 30
+Circle -7500403 true true 30 135 30
+Circle -16777216 false false 30 135 30
+Circle -16777216 false false 60 210 30
+Circle -16777216 false false 135 240 30
+Circle -16777216 false false 210 210 30
+Circle -16777216 false false 240 135 30
+Circle -16777216 false false 210 60 30
+Circle -16777216 false false 135 30 30
+Circle -16777216 false false 60 60 30
+
+vacuum-cleaner
+true
+0
+Polygon -2674135 true false 75 90 105 150 165 150 135 135 105 135 90 90 75 90
+Circle -2674135 true false 105 135 30
+Rectangle -2674135 true false 75 105 90 120
 
 wheel
 false
