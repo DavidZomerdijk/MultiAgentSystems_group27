@@ -17,7 +17,7 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
-globals [total_dirty time]
+globals [total_dirty time dirt-limit]
 
 
 ; --- Agents ---
@@ -37,6 +37,9 @@ breed [gbins gbin]
 vacuums-own [beliefs desire intention
   x-direc ; direction to move in x-axis
   y-direc ; direction to move in y-axis
+  just_cleaned ; just cleaned a tile
+  just_emptied ; just emptied my dirt bag
+  d-collected ; number of dirty tiles that vacuum cleaner has collected
   ]
 
 
@@ -85,7 +88,11 @@ end
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
   ;set-default-shape vacuums "ufo top"
-  create-vacuums 1 [ setxy random-xcor random-ycor ]
+  create-vacuums 1 [
+    setxy random-xcor random-ycor
+    set just_cleaned false
+    set just_emptied false
+  ]
 
 end
 
@@ -96,21 +103,15 @@ to setup-gbins
   create-gbins 1 [
     move-to one-of patches with [ pcolor != gray and not any? vacuums-here ]
   ]
+  ; initialize the number of dirt tiles that an agent can carry before he/she has
+  ; to empty the "bag"
+  set dirt-limit 5
 
 end
 
 ; --- Setup ticks ---
 to setup-ticks
   ; In this method you may start the tick counter.
-end
-
-
-; --- Update desires ---
-to update-desires
-  ; You should update your agent's desires here.
-  ; At the beginning your agent should have the desire to clean all the dirt.
-  ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
-  ask vacuums [ if total_dirty = 0 [ set desire replace-item 0 desire "stop and turn off" ] ]
 end
 
 to initialize-agent
@@ -136,29 +137,59 @@ to initialize-agent
 end
 
 ; --- Update desires ---
+to update-desires
+  ; You should update your agent's desires here.
+  ; At the beginning your agent should have the desire to clean all the dirt.
+  ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+  ask vacuums [ if d-collected = dirt-limit and item 0 desire != "throw-dirt-away" [
+        set desire fput "throw-dirt-away" desire
+      ]
+  ]
+  ; check whether desire needs to be updated because agent just emptied his/her
+  ; bag
+  ask vacuums [ if just_emptied and item 0 desire = "throw-dirt-away" [
+        set desire remove item 0 desire desire
+  ]
+  ; if everything is cleaned and the bag is empty, then stop
+  ask vacuums [ if total_dirty = 0 and d-collected = 0 [
+      set desire "stop and turn off"
+     ]
+  ]
+
+end
+
+; --- Update desires ---
 to update-beliefs
  ; You should update your agent's beliefs here.
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
-  ask vacuums [ set beliefs remove item 0 beliefs beliefs]
+  ask vacuums [ if just_cleaned [
+      set beliefs remove item 0 beliefs beliefs
+      set just_cleaned false
+     ]
+  ]
 end
-
 
 ; --- Update intentions ---
 to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
-  ask vacuums [ ifelse (item 0 desire = "clean-room" and length beliefs > 0)
+
+  ask vacuums [ ifelse (item 0 desire = "clean-room")
                            [ set intention remove item 0 intention intention
                              ; get new intention, but first sort the "beliefs" based on the distance between vacuum cleaner
                              ; and dirty patch so that agent picks the one that is closest to him/her
-                             set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
-                             set intention fput item 0 beliefs intention
+                             if length beliefs > 0 [
+                               set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+                               set intention fput item 0 beliefs intention
                              set x-direc [pxcor] of item 0 intention
                              set y-direc [pycor] of item 0 intention
                              facexy x-direc y-direc ]
-                           [set intention remove item 0 intention intention] ]
+                           [ ifelse item 0 desire = "throw-dirt-away" [ ]
+                             [set intention remove item 0 intention intention]
+                           ]
+  ]
 end
 
 
@@ -166,7 +197,11 @@ end
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
   if [item 0 desire] of vacuum 0 = "clean-room" [
-    clean-dirt
+    ask vacuums [
+      if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
+        clean-dirt
+      ]
+    ]
   ]
   if member? [item 0 desire] of vacuum 0 ["clean-room" "throw-dirt-away" ] [
     move-forward
@@ -182,13 +217,11 @@ end
 
 to clean-dirt
   ask vacuums [
-    if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
       set pcolor black
       move-to patch-here
       set total_dirty total_dirty - 1
-      update-beliefs
-      update-intentions
-    ]
+      set d-collected d-collected + 1
+      set just_cleaned true
   ]
 end
 @#$#@#$#@
