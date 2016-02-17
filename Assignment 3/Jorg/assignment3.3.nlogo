@@ -1,12 +1,9 @@
 ; UVA/VU - Multi-Agent Systems
-; Lecturers: T. Bosse & M.C.A. Klein
-; Lab assistants: D. Formolo & L. Medeiros
+; Assignment 3 Vacuum Cleaner World
 
-
-; --- Assignment 3 - Template ---
-; Please use this template as a basis for the code to generate the behaviour of your smart vacuum cleaner.
-; However, feel free to extend this with any variable or method you think is necessary.
-
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
 
 ; --- Settable variables ---
 ; The following settable variables are given as part of the 'Interface' (hence, these variables do not need to be declared in the code):
@@ -28,6 +25,7 @@ globals [total_dirty time]
 ;
 ; 1) vacuums: vacuum cleaner agents.
 breed [vacuums vacuum]
+breed [gbins gbin]
 
 
 ; --- Local variables ---
@@ -36,7 +34,10 @@ breed [vacuums vacuum]
 ; 1) beliefs: the agent's belief base about locations that contain dirt
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
-vacuums-own [beliefs desire intention]
+vacuums-own [beliefs desire intention
+  x-direc ; direction to move in x-axis
+  y-direc ; direction to move in y-axis
+  ]
 
 
 ; --- Setup ---
@@ -44,7 +45,11 @@ to setup
   set time 0
   setup-patches
   setup-vacuums
+  setup-gbins
   setup-ticks
+  initialize-agent
+  reset-ticks
+  reset-timer
 end
 
 
@@ -53,24 +58,46 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
-  update-beliefs
-  update-intentions
+  if [ item 0 desire ] of vacuum 0 = "stop and turn off" [ stop ]
+  ;update-beliefs
+  ;update-intentions
   execute-actions
   tick
+  set time timer
 end
 
 
 ; --- Setup patches ---
 to setup-patches
+  clear-all
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
+  let num_of_tiles round (max-pxcor + 1) * (max-pycor + 1)
+  let num_of_dtiles round (dirt_pct * num_of_tiles / 100)
+  ask n-of num_of_dtiles patches [
+      set pcolor gray
+  ]
+  set total_dirty num_of_dtiles
+
 end
 
 
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
+  ;set-default-shape vacuums "ufo top"
+  create-vacuums 1 [ setxy random-xcor random-ycor ]
+
 end
 
+to setup-gbins
+  ; create the garbage bin but make sure it is not placed on a patch with
+  ; dirt or the vacuum cleaner
+  set-default-shape gbins "garbage-can"
+  create-gbins 1 [
+    move-to one-of patches with [ pcolor != gray and not any? vacuums-here ]
+  ]
+
+end
 
 ; --- Setup ticks ---
 to setup-ticks
@@ -83,8 +110,30 @@ to update-desires
   ; You should update your agent's desires here.
   ; At the beginning your agent should have the desire to clean all the dirt.
   ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+  ask vacuums [ if total_dirty = 0 [ set desire replace-item 0 desire "stop and turn off" ] ]
 end
 
+to initialize-agent
+  ; store initial beliefs about dirty patches in list of beliefs
+  ask vacuums [
+   set beliefs [self] of patches with [pcolor = gray]
+  ]
+  ; show the observer the number of beliefs
+  ask vacuums [show length beliefs]
+  ask vacuums [  set intention [] ]
+  ; initialize desires
+  ask vacuums [ set desire ["clean-room"] ]
+  ; initialize intention
+  ask vacuums [ ifelse length beliefs > 0
+    [ set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+      set intention fput item 0 beliefs intention
+      set x-direc [pxcor] of item 0 intention
+      set y-direc [pycor] of item 0 intention
+      facexy x-direc y-direc ]
+    [ die ]
+  ]
+
+end
 
 ; --- Update desires ---
 to update-beliefs
@@ -92,6 +141,7 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
+  ask vacuums [ set beliefs remove item 0 beliefs beliefs]
 end
 
 
@@ -99,12 +149,47 @@ end
 to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
+  ask vacuums [ ifelse (item 0 desire = "clean-room" and length beliefs > 0)
+                           [ set intention remove item 0 intention intention
+                             ; get new intention, but first sort the "beliefs" based on the distance between vacuum cleaner
+                             ; and dirty patch so that agent picks the one that is closest to him/her
+                             set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+                             set intention fput item 0 beliefs intention
+                             set x-direc [pxcor] of item 0 intention
+                             set y-direc [pycor] of item 0 intention
+                             facexy x-direc y-direc ]
+                           [set intention remove item 0 intention intention] ]
 end
 
 
 ; --- Execute actions ---
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
+  if [item 0 desire] of vacuum 0 = "clean-room" [
+    clean-dirt
+  ]
+  if member? [item 0 desire] of vacuum 0 ["clean-room" "throw-dirt-away" ] [
+    move-forward
+  ]
+
+end
+
+to move-forward
+
+  ask vacuums [ ifelse not can-move? 1 [ set heading (180 + heading) fd 1] [ fd 1 ]  ]
+
+end
+
+to clean-dirt
+  ask vacuums [
+    if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
+      set pcolor black
+      move-to patch-here
+      set total_dirty total_dirty - 1
+      update-beliefs
+      update-intentions
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -143,7 +228,7 @@ dirt_pct
 dirt_pct
 0
 100
-0
+8
 1
 1
 NIL
