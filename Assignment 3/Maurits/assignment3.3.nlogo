@@ -53,6 +53,7 @@ to setup
   setup-ticks
   set time 0
   set exit false
+  print "-----------------------------------------------"
 end
 
 
@@ -111,7 +112,6 @@ to setup-ticks
   ; In this method you may start the tick counter.
 end
 
-
 ; --- Update desires ---
 to update-desires
   ; You should update your agent's desires here.
@@ -128,7 +128,6 @@ to update-desires
         ]
   ]
 end
-
 
 ; --- Update desires ---
 to update-beliefs
@@ -147,16 +146,20 @@ to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
   ask vacuums [
-    ifelse intention = 0 and amount_of_dirt != garbage_bag_size
+    ifelse amount_of_dirt < garbage_bag_size
     [
-     set beliefs sort-on [ distance myself ] beliefs
-     set intention first beliefs
+     if intention = 0
+     [
+       set beliefs sort-on [ distance myself ] beliefs
+        set intention first beliefs
+     ]
     ]
     [
-      print "drop"
-      set intention one-of garbages
-     ]
-  ]
+     set intention one-of garbages
+     print "drop"
+
+    ]
+ ]
 end
 
 
@@ -173,7 +176,7 @@ end
 
 to clean-dirt
   ask vacuums [
-    if pcolor = grey [
+    if pcolor = grey and  amount_of_dirt != garbage_bag_size [
       set pcolor black
       set intention  0
       set total_dirty total_dirty - 1
@@ -349,7 +352,7 @@ garbage_bag_size
 garbage_bag_size
 0
 20
-4
+20
 1
 1
 NIL

@@ -685,7 +685,7 @@ Circle -16777216 false false 60 60 30
 vacuum-cleaner
 true
 0
-Polygon -2674135 true false 75 90 105 150 165 150 135 135 105 135 90 90 75 90
+Polygon -2674135 true false 60 150 90 210 150 210 120 195 90 195 75 150 60 150
 Circle -2674135 true false 105 135 30
 Rectangle -2674135 true false 75 105 90 120
 

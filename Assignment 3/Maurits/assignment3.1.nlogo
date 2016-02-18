@@ -38,18 +38,22 @@ breed [vacuums vacuum]
 ; 1) beliefs: the agent's belief base about locations that contain dirt
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
-vacuums-own [beliefs desire intention]
+vacuums-own [beliefs desire intention preformed-cleaning]
 
 
 ; --- Setup ---
 to setup
   clear-all
-  set time 0
+  ; setup environment and vacuum cleaner
   setup-patches
   setup-vacuums
   setup-ticks
+
   set time 0
   set exit false
+
+  reset-ticks
+  reset-timer
 end
 
 
@@ -59,12 +63,12 @@ to go
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
   update-beliefs
-  update-intentions
+  ; if all the dirt is gone, stop the main loop. This is when the angent has the belief that there is no dirt in the room anymore.
   if exit
     [ stop ]
+  update-intentions
   execute-actions
-  update-beliefs
-  set time time + 1
+  set time timer
   tick
 end
 
@@ -83,12 +87,15 @@ end
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
-  set-default-shape vacuums "ufo top" ; proper  way to visualise the vacuum cleaner
+  set-default-shape vacuums "vacuum-cleaner" ; proper  way to visualise the vacuum cleaner
   ; set the vacuum cleaner on a 'clean' tile
   create-vacuums 1 [
     move-to one-of patches with [ pcolor != grey ]
     facexy xcor ycor + 1
-    set color red ]
+    set preformed-cleaning false
+    set color red
+    setup-beliefs
+ ]
 end
 
 
@@ -116,6 +123,13 @@ to update-desires
   ]
 end
 
+; --- Setup desires ---
+to setup-beliefs
+  ; when the simulation starts the agent will recieve full information about the envorinment, therefor it will know where the dirt is in the room.
+  ask vacuums [
+   set beliefs [self] of patches with [pcolor = gray]
+  ]
+end
 
 ; --- Update desires ---
 to update-beliefs
@@ -124,8 +138,15 @@ to update-beliefs
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
  ask vacuums [
-   set beliefs patch-set patches with [pcolor = grey]
+   if preformed-cleaning
+   [
+     set beliefs remove-item  0 beliefs
+     set preformed-cleaning false
+   ]
+   if length beliefs = 0
+   [set exit true]
  ]
+
 end
 
 
@@ -135,7 +156,9 @@ to update-intentions
   ; The agent's intentions should be dependent on its beliefs and desires.
   ask vacuums [
     if intention = 0
-    [ set intention one-of beliefs ]
+    [ set intention item 0 beliefs ]
+    if patch-here = intention
+    [ set intention "clean-dirt" ]
   ]
 end
 
@@ -143,18 +166,23 @@ end
 ; --- Execute actions ---
 to execute-actions
   ask vacuums [
+    ifelse intention != "clean-dirt"
+    [
     face intention
     forward 1
+    ]
+    [ clean-dirt ]
   ]
-  clean-dirt
+
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
 end
 
 to clean-dirt
   ask vacuums [
-    if pcolor = grey [
+    if pcolor = grey and intention = "clean-dirt" [
       set pcolor black
       set intention  0
+      set preformed-cleaning true
       set total_dirty total_dirty - 1
     ]
  ]
@@ -196,7 +224,7 @@ dirt_pct
 dirt_pct
 0
 100
-32
+16
 1
 1
 NIL
@@ -668,9 +696,9 @@ Circle -16777216 false false 60 60 30
 vacuum-cleaner
 true
 0
-Polygon -2674135 true false 75 90 105 150 165 150 135 135 105 135 90 90 75 90
-Circle -2674135 true false 105 135 30
-Rectangle -2674135 true false 75 105 90 120
+Circle -7500403 true true 69 204 42
+Circle -7500403 true true 189 204 42
+Polygon -7500403 true true 30 210 270 210 270 195 270 195 255 180 240 165 225 150 210 150 195 150 75 150 60 165 45 180 30 195 30 210 30 210
 
 wheel
 false
