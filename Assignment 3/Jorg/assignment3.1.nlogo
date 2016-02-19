@@ -34,8 +34,6 @@ breed [vacuums vacuum]
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
 vacuums-own [beliefs desire intention
-  x-direc ; direction to move in x-axis
-  y-direc ; direction to move in y-axis
   ]
 
 
@@ -115,9 +113,7 @@ to initialize-agent
   ; initialize intention
   ask vacuums [ ifelse length beliefs > 0
     [ set intention fput item 0 beliefs intention
-      set x-direc [pxcor] of item 0 intention
-      set y-direc [pycor] of item 0 intention
-      facexy x-direc y-direc ]
+      face item 0 intention ]
     [ die ]
   ]
 
@@ -140,9 +136,7 @@ to update-intentions
   ask vacuums [ ifelse (item 0 desire = "clean-room" and length beliefs > 0)
                            [ set intention remove item 0 intention intention
                              set intention fput item 0 beliefs intention
-                             set x-direc [pxcor] of item 0 intention
-                             set y-direc [pycor] of item 0 intention
-                             facexy x-direc y-direc ]
+                             face item 0 intention ]
                            [set intention remove item 0 intention intention] ]
 end
 
@@ -167,7 +161,8 @@ end
 
 to clean-dirt
   ask vacuums [
-    if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
+
+    if ( item 0 intention = patch-here and pcolor = gray) [
       set pcolor black
       move-to patch-here
       set total_dirty total_dirty - 1
@@ -213,7 +208,7 @@ dirt_pct
 dirt_pct
 0
 100
-8
+21
 1
 1
 NIL

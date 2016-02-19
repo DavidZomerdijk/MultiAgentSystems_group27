@@ -17,6 +17,8 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
+; 3) dirt-limit: number of dirty tiles that agent can collect in its bag
+;                value of this global variable is set in the procedure "set-gbins". Currently set to 5.
 globals [total_dirty time dirt-limit]
 
 
@@ -24,6 +26,7 @@ globals [total_dirty time dirt-limit]
 ; The following types of agent (called 'breeds' in NetLogo) are given. (Note: in Assignment 3.3, you could implement the garbage can as an agent as well.)
 ;
 ; 1) vacuums: vacuum cleaner agents.
+; 2) gbins: the garbage bin, used to empty the "bag with dirty tiles"
 breed [vacuums vacuum]
 breed [gbins gbin]
 
@@ -32,13 +35,14 @@ breed [gbins gbin]
 ; The following local variables are given. (Note: you might need additional local variables (e.g., to keep track of how many pieces of dirt are in the bag in Assignment 3.3). You could represent this as another belief, but it this is inconvenient you may also use another name for it.)
 ;
 ; 1) beliefs: the agent's belief base about locations that contain dirt
+;    actually we also add the location of the garbage bin to the beliefs at the moment that
+;    the vacuum cleaner has the desire to "throw away the full bag of dirty tiles"
 ; 2) desire: the agent's current desire
+;    in our implementation also a stack of desires.
 ; 3) intention: the agent's current intention
 vacuums-own [beliefs desire intention
-  x-direc ; direction to move in x-axis
-  y-direc ; direction to move in y-axis
   just_cleaned ; just cleaned a tile
-  just_emptied ; just emptied my dirt bag
+  just_emptied ; just emptied my dirty bag
   d-collected ; number of dirty tiles that vacuum cleaner has collected
   ]
 
@@ -49,7 +53,7 @@ to setup
   setup-patches
   setup-vacuums
   setup-gbins
-  setup-ticks
+  ; used to initialize the "base beliefs" of the vacuum cleaner, i.e. the initial locations of the dirty tiles, given to the agent
   initialize-agent
   reset-ticks
   reset-timer
@@ -61,9 +65,9 @@ to go
   ; This method executes the main processing cycle of an agent.
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
-  if [ item 0 desire ] of vacuum 0 = "stop and turn off" [ stop ]
-  ;update-beliefs
-  ;update-intentions
+  update-beliefs
+  update-intentions
+  if [ item 0 desire ] of vacuum 0 = "stop-and-turn-off" [ print "stop" stop ]
   execute-actions
   tick
   set time timer
@@ -74,11 +78,14 @@ end
 to setup-patches
   clear-all
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
+  ; calculate the number of dirty tiles based on slider
   let num_of_tiles round (max-pxcor + 1) * (max-pycor + 1)
   let num_of_dtiles round (dirt_pct * num_of_tiles / 100)
+  ; set dirty tiles to color gray
   ask n-of num_of_dtiles patches [
       set pcolor gray
   ]
+  ; initialize the global variable total_dirty (tiles) which is used to stop the program
   set total_dirty num_of_dtiles
 
 end
@@ -109,29 +116,21 @@ to setup-gbins
 
 end
 
-; --- Setup ticks ---
-to setup-ticks
-  ; In this method you may start the tick counter.
-end
-
+; called during setup. Initialize agent with the "given beliefs" i.e. the locations of the dirty tiles
 to initialize-agent
   ; store initial beliefs about dirty patches in list of beliefs
   ask vacuums [
    set beliefs [self] of patches with [pcolor = gray]
   ]
-  ; show the observer the number of beliefs
-  ask vacuums [show length beliefs]
+
   ask vacuums [  set intention [] ]
-  ; initialize desires
+  ; initialize desire, clean the room
   ask vacuums [ set desire ["clean-room"] ]
-  ; initialize intention
-  ask vacuums [ ifelse length beliefs > 0
+  ; initialize intention, sort the location of the dirty tiles based on the distance w.r.t. to the vacuum cleaner
+  ask vacuums [ if length beliefs > 0
     [ set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
       set intention fput item 0 beliefs intention
-      set x-direc [pxcor] of item 0 intention
-      set y-direc [pycor] of item 0 intention
-      facexy x-direc y-direc ]
-    [ die ]
+      face item 0 intention ]
   ]
 
 end
@@ -141,6 +140,9 @@ to update-desires
   ; You should update your agent's desires here.
   ; At the beginning your agent should have the desire to clean all the dirt.
   ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+
+  ; check whether the "bag" just reached the max amount of dirty tiles. Then the desire of the agent has to
+  ; be changed to "throw dirt away"
   ask vacuums [ if d-collected = dirt-limit and item 0 desire != "throw-dirt-away" [
         set desire fput "throw-dirt-away" desire
       ]
@@ -149,10 +151,12 @@ to update-desires
   ; bag
   ask vacuums [ if just_emptied and item 0 desire = "throw-dirt-away" [
         set desire remove item 0 desire desire
+    ]
   ]
   ; if everything is cleaned and the bag is empty, then stop
-  ask vacuums [ if total_dirty = 0 and d-collected = 0 [
-      set desire "stop and turn off"
+  ask vacuums [ if total_dirty = 0 and d-collected < dirt-limit [
+      set desire []
+      set desire fput "stop-and-turn-off" desire
      ]
   ]
 
@@ -164,11 +168,19 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
-  ask vacuums [ if just_cleaned [
+
+  ; if agent just cleand a tile or emptied its bag, remove the first belief from the stack
+  ; which is equal to the location of the garbage bin or tile, depending on the desire
+  ask vacuums [ if just_cleaned or just_emptied [
       set beliefs remove item 0 beliefs beliefs
-      set just_cleaned false
      ]
   ]
+  ; if agents has desire to empty the bag with dirty tiles and the beliefs are not yet updated, add belief (the location of the garbage bin)
+  ask vacuums [ if (item 0 desire = "throw-dirt-away" and not member? one-of gbins beliefs) [
+         set beliefs fput one-of gbins beliefs
+      ]
+  ]
+
 end
 
 ; --- Update intentions ---
@@ -176,34 +188,60 @@ to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
 
-  ask vacuums [ ifelse (item 0 desire = "clean-room")
-                           [ set intention remove item 0 intention intention
-                             ; get new intention, but first sort the "beliefs" based on the distance between vacuum cleaner
-                             ; and dirty patch so that agent picks the one that is closest to him/her
-                             if length beliefs > 0 [
-                               set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
-                               set intention fput item 0 beliefs intention
-                             set x-direc [pxcor] of item 0 intention
-                             set y-direc [pycor] of item 0 intention
-                             facexy x-direc y-direc ]
-                           [ ifelse item 0 desire = "throw-dirt-away" [ ]
-                             [set intention remove item 0 intention intention]
-                           ]
-  ]
+  ; first check whether agent just cleaned a tile or emptied its bag, if that is the case remove current intention from stack
+  ask vacuums [ if just_cleaned [
+                   set intention remove item 0 intention intention
+                   set just_cleaned false
+                 ]
+               if just_emptied [
+                   set intention remove item 0 intention intention
+                   set just_emptied false
+               ]
+      ; if agent has desire to clean the room
+      ifelse item 0 desire = "clean-room" [
+        ; get new intention, but first sort the "beliefs" based on the distance between vacuum cleaner
+        ; and dirty patch so that agent picks the one that is closest to him/her
+        if length beliefs > 0 and intention = []  [
+            set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+            set intention fput item 0 beliefs intention
+            face item 0 intention
+           ]
+        ]
+      ; if agent has desire to empty its dirt bag, and the location of the garbage bin
+      ; is not already an intention, update the intention with the location of the garbage bin
+        [ if item 0 desire = "throw-dirt-away" and not member? one-of gbins intention [
+               set intention fput one-of gbins intention
+               face item 0 intention
+             ]
+        ]
+    ]
+
 end
 
 
 ; --- Execute actions ---
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
-  if [item 0 desire] of vacuum 0 = "clean-room" [
+
+  if [ item 0 desire ] of vacuum 0 = "clean-room" [
     ask vacuums [
-      if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
+      if (item 0 intention = patch-here and pcolor = gray) [
         clean-dirt
       ]
     ]
   ]
-  if member? [item 0 desire] of vacuum 0 ["clean-room" "throw-dirt-away" ] [
+
+  if [ item 0 desire ] of vacuum 0 = "throw-dirt-away" [
+
+    ask vacuums [
+      if ( any? gbins-here) [
+        move-to patch-here
+        empty-bag
+      ]
+    ]
+  ]
+
+  if member? [item 0 desire] of vacuum 0 ["clean-room" "throw-dirt-away" ]  [
     move-forward
   ]
 
@@ -211,10 +249,25 @@ end
 
 to move-forward
 
-  ask vacuums [ ifelse not can-move? 1 [ set heading (180 + heading) fd 1] [ fd 1 ]  ]
-
+  ask vacuums [
+    ; we don't move the agent if it has just cleaned a tile or emptied its dirt bag
+    ; we assume it can only perform one action at a time
+    if not (just_cleaned or just_emptied) [
+      ; if agent is facing a wall, turn around 180 degrees
+      ifelse not can-move? 1 [ set heading (180 + heading) fd 1] [ fd 1 ]
+      ]
+    ]
 end
 
+; empty the dirt bag
+to empty-bag
+  ask vacuums [
+    set d-collected 0
+    set just_emptied true
+  ]
+end
+
+; clean the dirty tile
 to clean-dirt
   ask vacuums [
       set pcolor black
@@ -261,7 +314,7 @@ dirt_pct
 dirt_pct
 0
 100
-8
+68
 1
 1
 NIL
