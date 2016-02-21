@@ -253,6 +253,7 @@ to clean-dirt
       set preformed-cleaning true
       set total_dirty total_dirty - 1
       set amount_of_dirt amount_of_dirt + 1
+      set preformed-dropping false
       print amount_of_dirt
     ]
  ]
@@ -305,7 +306,7 @@ dirt_pct
 dirt_pct
 0
 100
-17
+81
 1
 1
 NIL
