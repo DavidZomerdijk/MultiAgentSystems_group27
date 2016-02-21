@@ -114,10 +114,9 @@ to initialize-agent
   ask vacuums [ set desire ["clean-room"] ]
   ; initialize intention
   ask vacuums [ ifelse length beliefs > 0
-    [ set intention fput item 0 sort-by [ distance ?1 < distance ?2 ] beliefs intention
-      set x-direc [pxcor] of item 0 intention
-      set y-direc [pycor] of item 0 intention
-      facexy x-direc y-direc ]
+    [ set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+      set intention fput item 0 beliefs intention
+      face item 0 intention ]
     [ die ]
   ]
 
@@ -141,10 +140,9 @@ to update-intentions
                            [ set intention remove item 0 intention intention
                              ; get new intention, but first sort the "beliefs" based on the distance between vacuum cleaner
                              ; and dirty patch so that agent picks the one that is closest to him/her
-                             set intention fput item 0 sort-by [ distance ?1 < distance ?2 ] beliefs intention
-                             set x-direc [pxcor] of item 0 intention
-                             set y-direc [pycor] of item 0 intention
-                             facexy x-direc y-direc ]
+                             set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+                             set intention fput item 0 beliefs intention
+                             face item 0 intention  ]
                            [set intention remove item 0 intention intention] ]
 end
 
@@ -169,7 +167,7 @@ end
 
 to clean-dirt
   ask vacuums [
-    if (x-direc = [pxcor] of patch-here and y-direc = [pycor] of patch-here and pcolor = gray) [
+    if (item 0 intention = patch-here and pcolor = gray) [
       set pcolor black
       move-to patch-here
       set total_dirty total_dirty - 1
@@ -215,7 +213,7 @@ dirt_pct
 dirt_pct
 0
 100
-8
+21
 1
 1
 NIL
