@@ -2,6 +2,9 @@
 ; Lecturers: T. Bosse & M.C.A. Klein
 ; Lab assistants: D. Formolo & L. Medeiros
 
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
 
 ; --- Assignment 3 - Template ---
 ; Please use this template as a basis for the code to generate the behaviour of your smart vacuum cleaner.
@@ -20,7 +23,9 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
-globals [total_dirty time]
+; 3) num_of_tiles: total number of tiles in the envoirment
+; 4) exit: boolean wihch indicates when the simulation should stop
+globals [total_dirty time num_of_tiles exit]
 
 
 ; --- Agents ---
@@ -36,15 +41,23 @@ breed [vacuums vacuum]
 ; 1) beliefs: the agent's belief base about locations that contain dirt
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
-vacuums-own [beliefs desire intention]
+; 4) preformed-cleaning : boolean that is true when the agent preformed a cleaning action
+vacuums-own [beliefs desire intention preformed-cleaning]
 
 
 ; --- Setup ---
 to setup
-  set time 0
+  clear-all
+  ; setup environment and vacuum cleaner
   setup-patches
   setup-vacuums
   setup-ticks
+
+  set time 0
+  set exit false
+
+  reset-ticks
+  reset-timer
 end
 
 
@@ -54,8 +67,13 @@ to go
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
   update-beliefs
+  ; if all the dirt is gone, stop the main loop. This is when the angent has the belief that there is no dirt in the room anymore.
+  if exit
+    [ stop ]
+  ; update new intention based in the current state of the environment
   update-intentions
   execute-actions
+  set time timer
   tick
 end
 
@@ -63,17 +81,34 @@ end
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
+  set num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
+  set total_dirty round (dirt_pct * num_of_tiles / 100)
+  ask n-of total_dirty patches [
+      ; grey cells are dirty
+      set pcolor grey
+  ]
 end
 
 
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
+  set-default-shape vacuums "ufo top" ; proper  way to visualise the vacuum cleaner
+  ; set the vacuum cleaner on a 'clean (black)' tile
+  create-vacuums 1 [
+    move-to one-of patches with [ pcolor != grey ]
+    facexy xcor ycor + 1
+    set preformed-cleaning false
+    set color red
+    ; setup the beliefs of the agent based on the start state of the environment
+    setup-beliefs
+ ]
 end
 
 
 ; --- Setup ticks ---
 to setup-ticks
+  reset-ticks
   ; In this method you may start the tick counter.
 end
 
@@ -83,8 +118,26 @@ to update-desires
   ; You should update your agent's desires here.
   ; At the beginning your agent should have the desire to clean all the dirt.
   ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+
+  ; desires should be a list of all dirty patches
+  ask vacuums [
+    ifelse length beliefs >= 1
+        ; the desire is clean all the  dirty patches in the environmnet. If this desire is true, there are some dirty patches left, if not then all the dirt is gone and the desire to clean the environment is false
+        [ set desire true ]
+        [
+          set desire false
+          set exit true
+        ]
+  ]
 end
 
+; --- Setup desires ---
+to setup-beliefs
+  ; when the simulation starts the agent will recieve full information about the environment, therefor it will know where the dirt is in the room.
+  ask vacuums [
+   set beliefs [self] of patches with [pcolor = gray]
+  ]
+end
 
 ; --- Update desires ---
 to update-beliefs
@@ -92,6 +145,18 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
+ ask vacuums [
+   if preformed-cleaning
+   [
+     ; if the agent preformed a cleaning action, remove the belief of dirt on that location from the belief list
+     ; for this assignment we sort the beliefs on nearest dirty patch
+     set beliefs remove-item  0 sort-by [ distance ?1 < distance ?2 ] beliefs
+     set preformed-cleaning false
+   ]
+  if length beliefs = 0
+    [set exit true]
+ ]
+
 end
 
 
@@ -99,12 +164,42 @@ end
 to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
+  ask vacuums [
+    ; after preforming a action the intention is set to 0 (empty). If the intetion is empty, set a new intention
+    if intention = 0
+       ; for this assignment we sort the beliefs on nearest dirty patch
+       [ set intention  item 0 sort-by [ distance ?1 < distance ?2 ] beliefs ]
+    if patch-here = intention
+       [ set intention "clean-dirt" ]
+  ]
 end
 
 
 ; --- Execute actions ---
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
+  ask vacuums [
+    ifelse intention != "clean-dirt"
+    [
+      face intention
+      forward 1
+    ]
+    [ clean-dirt ]
+  ]
+end
+
+
+
+to clean-dirt
+  ; method that clean a dirty patch
+  ask vacuums [
+    if pcolor = grey and intention = "clean-dirt" [
+      set pcolor black
+      set intention  0
+      set preformed-cleaning true
+      set total_dirty total_dirty - 1
+    ]
+ ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -143,7 +238,7 @@ dirt_pct
 dirt_pct
 0
 100
-0
+17
 1
 1
 NIL
@@ -615,9 +710,9 @@ Circle -16777216 false false 60 60 30
 vacuum-cleaner
 true
 0
-Polygon -2674135 true false 75 90 105 150 165 150 135 135 105 135 90 90 75 90
-Circle -2674135 true false 105 135 30
-Rectangle -2674135 true false 75 105 90 120
+Circle -7500403 true true 69 204 42
+Circle -7500403 true true 189 204 42
+Polygon -7500403 true true 30 210 270 210 270 195 255 180 240 165 225 150 210 150 195 150 75 150 60 165 45 180 30 195 30 210
 
 wheel
 false
