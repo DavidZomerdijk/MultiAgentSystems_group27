@@ -1,7 +1,12 @@
 ; UVA/VU - Multi-Agent Systems
 ; Lecturers: T. Bosse & M.C.A. Klein
 ; Lab assistants: D. Formolo & L. Medeiros
-
+;
+;BONUS ASSIGNMENT
+;
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
 
 ; --- Assignment 3 - Template ---
 ; Please use this template as a basis for the code to generate the behaviour of your smart vacuum cleaner.
@@ -20,31 +25,56 @@
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
 ; 2) time: the total simulation time.
-globals [total_dirty time]
+; 3) num_of_tiles: total number of tiles in the envoirment
+; 4) exit: boolean wihch indicates when the simulation should stop
+globals [total_dirty time num_of_tiles exit]
 
 
 ; --- Agents ---
 ; The following types of agent (called 'breeds' in NetLogo) are given. (Note: in Assignment 3.3, you could implement the garbage can as an agent as well.)
 ;
 ; 1) vacuums: vacuum cleaner agents.
+; 2) garbage-cans: here a agent can drop the dirt in the garbage back
 breed [vacuums vacuum]
+breed [ garbage-cans garbage-can ]
 
 
 ; --- Local variables ---
 ; The following local variables are given. (Note: you might need additional local variables (e.g., to keep track of how many pieces of dirt are in the bag in Assignment 3.3). You could represent this as another belief, but it this is inconvenient you may also use another name for it.)
 ;
+
 ; 1) beliefs: the agent's belief base about locations that contain dirt
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
-vacuums-own [beliefs desire intention]
+; 4) preformed-cleaning : boolean that is true when the agent preformed a cleaning action
+; 5) amount_of_dirt: amount of dirt in the garbage bag of the agent
+; 6) garbage_bag_size: size of the garbage back of the vacuum cleaner
+; 7) preformed-dropping: boolean which is true after a agent emptied its garbage bag
 
+;BONUS
+; 8) energy is a value that determines how far the vacuum can walk. The vacuum needs 1 energy for every time step
+; 9) total_collected is a value that determines how much the vacuum has collected based on patchess with multiple pieces of dirt
+; 10) fully cleaned is a variable so that the vacuum knows whether it has to return to the dirt spot if not everything is cleaned or not
+vacuums-own [beliefs desire intention preformed-cleaning amount_of_dirt garbage_bag_size preformed-dropping energy total_collected fully_cleaned]
+
+;for the bonus, every location will get a value instead of just a boolean value for dirt (grey or not).
+patches-own [pieces_of_dirt]
 
 ; --- Setup ---
 to setup
-  set time 0
+  clear-all
+  print "         "
+  ; setup environment and vacuum cleaner
   setup-patches
   setup-vacuums
+  setup-garbage-can
   setup-ticks
+
+  set time 0
+  set exit false
+
+  reset-ticks
+  reset-timer
 end
 
 
@@ -54,8 +84,13 @@ to go
   ; For Assignment 3, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
   update-beliefs
+  ; if all the dirt is gone, stop the main loop. This is when the angent has the belief that there is no dirt in the room anymore.
+  if exit
+    [ stop ]
+  ; update new intention based in the current state of the environment
   update-intentions
   execute-actions
+  set time timer
   tick
 end
 
@@ -63,17 +98,53 @@ end
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define dirty and cleaned cells.
+  set num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
+  set total_dirty round (dirt_pct * num_of_tiles / 100)
+  ask n-of total_dirty patches [
+      set pcolor grey
+  ]
+  ;here we give all dirt-patches a value that represent the amount of dirt on the given location.
+  ask patches with [pcolor = grey]
+  [ set pieces_of_dirt ((random 10) + 1)
+    ]
 end
 
 
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents (in this case, there is only 1 vacuum cleaner agent).
+  set-default-shape vacuums "ufo top" ; proper  way to visualise the vacuum cleaner
+  ; set the vacuum cleaner on a 'clean' tile
+  create-vacuums 1 [
+    move-to one-of patches with [ pcolor != grey ]
+    facexy xcor ycor + 1
+    set preformed-cleaning false
+    set preformed-dropping false
+    set color red
+    setup-beliefs
+    set amount_of_dirt 0
+    ;setting variables for bonus (see description above)
+    ;size garbage size can be set with a slider
+    set garbage_bag_size size_garbage_bag
+    ;vac_energy can be set with a slider
+    set energy vac_energy
+    set total_collected 0
+    set fully_cleaned true
+ ]
 end
 
+to setup-garbage-can
+  set-default-shape garbage-cans  "garbage-can"
+  create-garbage-cans 1 [
+  move-to one-of patches with [ pcolor != grey ]
+  set color  red
+  ]
+
+end
 
 ; --- Setup ticks ---
 to setup-ticks
+  reset-ticks
   ; In this method you may start the tick counter.
 end
 
@@ -83,8 +154,31 @@ to update-desires
   ; You should update your agent's desires here.
   ; At the beginning your agent should have the desire to clean all the dirt.
   ; If it realises that there is no more dirt, its desire should change to something like 'stop and turn off'.
+
+  ; desires should be a list of all dirty patches
+  ask vacuums [
+    ;for the bonus
+    ;The desire is to clean as much dust as possible with the given energy capacity. therefore, when energy hits 0, this desire is also set to false
+    if energy < 1 [ set exit true set desire false]
+
+    ifelse length beliefs >= 1
+        [
+          set desire true
+        ]
+        [
+          set desire false
+          set exit true
+        ]
+  ]
 end
 
+; --- Setup desires ---
+to setup-beliefs
+  ; when the simulation starts the agent will recieve full information about the envorinment, therefor it will know where the dirt is in the room.
+  ask vacuums [
+   set beliefs [self] of patches with [pcolor = gray]
+  ]
+end
 
 ; --- Update desires ---
 to update-beliefs
@@ -92,6 +186,23 @@ to update-beliefs
  ; At the beginning your agent will receive global information about where all the dirty locations are.
  ; This belief set needs to be updated frequently according to the cleaning actions: if you clean dirt, you do not believe anymore there is a dirt at that location.
  ; In Assignment 3.3, your agent also needs to know where is the garbage can.
+ ask vacuums [
+   if preformed-cleaning
+   [
+     ; if the agent preformed a cleaning action, remove the belief of dirt on that location from the belief list
+     ; for this assignment we sort the beliefs on nearest dirty patch
+     if fully_cleaned
+     [
+     set beliefs remove-item  0 sort-by [ distance ?1 < distance ?2 ] beliefs
+     ]
+     set preformed-cleaning false
+   ]
+   if length beliefs = 0
+   [
+     set exit true
+   ]
+ ]
+
 end
 
 
@@ -99,12 +210,127 @@ end
 to update-intentions
   ; You should update your agent's intentions here.
   ; The agent's intentions should be dependent on its beliefs and desires.
+  ask vacuums [
+    ; of the garbage back is full go to the garbage can, else set intention to a dirty patch or clean a dirty patch if you are there.
+    ifelse  amount_of_dirt >= garbage_bag_size
+       [
+         set intention one-of garbage-cans
+       ]
+       [
+
+         if intention = 0 and amount_of_dirt < garbage_bag_size
+         [
+           ; if the agent has no intention, and the bag is not full yet;
+           ; set intention to one of the dirty patches from beliefs where the (pieces of dirt / distance is greatest)
+           ; In this way we will maximize the value per step (pieces of dirt / energy) and therefore do what the vacuum desires (for BONUS).
+
+           set intention  item 0 sort-by [ [pieces_of_dirt] of ?1  / distance ?1     >  [pieces_of_dirt] of ?2 /  distance ?2   ] beliefs
+
+
+         ]
+         if patch-here = intention and amount_of_dirt != garbage_bag_size
+         ; if the vacuum cleaner entered a diry patch
+         [
+           set intention "clean-dirt"
+         ]
+      ]
+  ]
 end
 
 
 ; --- Execute actions ---
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving and cleaning (and in Assignment 3.3, throwing away dirt).
+  ask vacuums [
+    ifelse intention != "clean-dirt" and patch-ahead 1 != "nobody"
+      [
+        ; this prevents an error when the next patch is outside the environment, if this is true, go to the current intention
+        let target patch-ahead 1
+        ifelse is-patch? target
+         [
+           ifelse any? garbage-cans-on patch-ahead 1  and not preformed-dropping
+           ; drop dirt if the agent not already did this
+           [
+             drop-dirt
+           ]
+           [
+             face intention
+             forward 1
+             set preformed-dropping  false
+             ;for the bonus every step forward costs 1 energy
+             set energy energy - 1
+             clean-dirt
+           ]
+         ]
+         [
+           face intention
+           forward 1
+           set preformed-dropping  false
+           ;for the bonus every step forward costs 1 energy
+           set energy energy - 1
+           clean-dirt
+         ]
+      ]
+      [
+        ; else clean dirt
+        clean-dirt
+      ]
+  ]
+
+
+end
+
+to clean-dirt
+  ask vacuums [
+    if pcolor = grey and intention = "clean-dirt" and garbage_bag_size > amount_of_dirt [
+
+      set intention  0
+      set preformed-cleaning true
+      set total_dirty total_dirty - 1
+
+      ;if there are more pieces of dirt than the vacuum can store, it will fill up his garbage_bag, and continue to the garbage can.
+      ;the size of the dirt will decrease, or when everything is taken, is set to zero and pcolor is set to black since there is no dirt left.
+      ifelse pieces_of_dirt > (garbage_bag_size - amount_of_dirt)
+         [
+          set total_collected total_collected + (garbage_bag_size - amount_of_dirt )
+          ;this variable is for the patch
+          set pieces_of_dirt  pieces_of_dirt - (garbage_bag_size - amount_of_dirt )
+          ;this variable is for the patch
+          set amount_of_dirt ( amount_of_dirt + (garbage_bag_size - amount_of_dirt ) )
+
+
+          set fully_cleaned false
+         ]
+         [
+          set total_collected total_collected + pieces_of_dirt
+          set amount_of_dirt amount_of_dirt + pieces_of_dirt
+          set pieces_of_dirt 0
+          set fully_cleaned true
+
+         ]
+
+      print amount_of_dirt
+      ;tracks total amount of dirt collected
+      set total_collected total_collected + pieces_of_dirt
+      set preformed-dropping false
+
+      ;here we set the patch to black if it doesn't contain dirt
+      if pieces_of_dirt < 1 [set pcolor black]
+
+
+    ]
+ ]
+end
+
+to drop-dirt
+  ask vacuums [
+    if any? garbage-cans-on patch-ahead 1
+     [
+       set amount_of_dirt 0
+       set intention  0
+       set preformed-dropping true
+     ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -143,7 +369,7 @@ dirt_pct
 dirt_pct
 0
 100
-0
+6
 1
 1
 NIL
@@ -251,6 +477,69 @@ MONITOR
 295
 The agent's current intention.
 [intention] of vacuum 0
+17
+1
+11
+
+SLIDER
+40
+468
+224
+501
+vac_energy
+vac_energy
+0
+500
+57
+1
+1
+steps
+HORIZONTAL
+
+MONITOR
+226
+459
+545
+504
+Energy vacuumcleaner (number of steps)
+[energy] of turtle 0
+17
+1
+11
+
+MONITOR
+221
+507
+565
+552
+Dirt in garbage_bag
+[amount_of_dirt] of vacuum 0
+17
+1
+11
+
+SLIDER
+45
+519
+217
+552
+size_garbage_bag
+size_garbage_bag
+0
+100
+19
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+12
+342
+780
+387
+Total dirt collected by vacuum
+[total_collected] of vacuum 0
 17
 1
 11
@@ -615,9 +904,9 @@ Circle -16777216 false false 60 60 30
 vacuum-cleaner
 true
 0
-Polygon -2674135 true false 75 90 105 150 165 150 135 135 105 135 90 90 75 90
-Circle -2674135 true false 105 135 30
-Rectangle -2674135 true false 75 105 90 120
+Circle -7500403 true true 69 204 42
+Circle -7500403 true true 189 204 42
+Polygon -7500403 true true 30 210 270 210 270 195 255 180 240 165 225 150 210 150 195 150 75 150 60 165 45 180 30 195 30 210
 
 wheel
 false
