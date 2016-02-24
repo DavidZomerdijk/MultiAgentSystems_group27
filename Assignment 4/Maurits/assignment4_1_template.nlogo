@@ -32,6 +32,7 @@ globals [total_dirty time num_of_tiles]
 ;
 ; 1) vacuums: vacuum cleaner agents.
 breed [vacuums vacuum]
+breed [sensors sensor]
 
 
 ; --- Local variables ---
@@ -68,32 +69,50 @@ end
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define cells with various types of dirt.
+
+
+  ; ***** NOTE: Deze functie is niet volledig random denk ik, omdat voor de laatste kleur patches er veel minder ruimte over is om op neer te komen zijn die veel meer gegeroepeerd
   let color_value 5
-  let counter 0
+  let counter 1
   set num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
   set total_dirty round (dirt_pct * num_of_tiles / 100)
-  print (round( total_dirty / num_agents ) + 1)
   while [counter <= num_agents ] [
-
-   ask n-of (round( total_dirty / num_agents ) + 1) patches with [pcolor = black] [
+   ask n-of (round( total_dirty / num_agents ) ) patches with [pcolor = black] [
       ; set differnt type of dirt
       set pcolor color_value
    ]
-   set color_value color_value + 5
+   set color_value color_value + 10
    set counter counter + 1
   ]
 end
 
-
 ; --- Setup vacuums ---
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents.
+  let color_value 5
+  set-default-shape vacuums "ufo top"
+  create-vacuums 5 [
+    move-to one-of patches with [ pcolor = black ]
+    facexy xcor ycor + 1
+    set color color_value
+    set own_color color_value
+    set color_value color_value + 10
+
+ ]
 end
 
+
+to setup-sensors
+  create-sensors 1 [
+
+  ]
+
+end
 
 ; --- Setup ticks ---
 to setup-ticks
   ; In this method you may start the tick counter.
+  reset-ticks
 end
 
 
@@ -106,6 +125,10 @@ end
 
 ; --- Update beliefs ---
 to update-beliefs
+  ask vacuums [
+    let _color own_color
+    set beliefs patches in-cone 3 vision_radius with [pcolor = _color]
+  ]
  ; You should update your agent's beliefs here.
  ; Please remember that you should use this method whenever your agents changes its position.
 end
@@ -121,6 +144,18 @@ end
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving, cleaning, and (actively) looking around.
   ; Please note that your agents should perform only one action per tick!
+  ask vacuums [
+    if beliefs != 0
+  [
+    let closest_patch item 0 sort-by [ distance ?1 < distance ?2 ] beliefs
+
+  ]
+  [
+
+  ]
+
+ ]
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -159,7 +194,7 @@ dirt_pct
 dirt_pct
 0
 100
-1
+40
 1
 1
 NIL
@@ -225,7 +260,7 @@ num_agents
 num_agents
 2
 7
-2
+3
 1
 1
 NIL
@@ -240,7 +275,7 @@ vision_radius
 vision_radius
 0
 100
-3
+100
 1
 1
 NIL
