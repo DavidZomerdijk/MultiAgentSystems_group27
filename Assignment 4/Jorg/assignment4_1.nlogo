@@ -1,6 +1,8 @@
 ; UVA/VU - Multi-Agent Systems
-; Lecturers: T. Bosse & M.C.A. Klein
-; Lab assistants: D. Formolo & L. Medeiros
+
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
 
 
 ; --- Assignment 4.1 - Template ---
@@ -23,18 +25,21 @@
 ; The following global variables are given.
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
-; 2) time: the total simulation time.
-globals [total_dirty time include-central-patch? nearby num_of_tiles]
+; 2) colors: a list with the seven colors we're using (7? because that's the limit of the # of agents we use)
+; 3) time: represents the time that the game has lasted
+globals [total_dirty colors time]
 
 
 ; --- Agents ---
 ; The following types of agent (called 'breeds' in NetLogo) are given.
 ;
 ; 1) vacuums: vacuum cleaner agents.
+; 2) antennas: the agentset that represents the vision radius (of patches) a vacuum cleaner has
 breed [vacuums vacuum]
 breed [antennas antenna ]
-breed [empty_set ]
 
+; --- Links ---
+; Links, we use the links to connect the vacuum cleaner with its antennas
 undirected-link-breed [antenna-links antenna-link]
 
 
@@ -44,38 +49,13 @@ undirected-link-breed [antenna-links antenna-link]
 ; 1) beliefs: the agent's belief base about locations that contain dirt
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
-; 4) own_color: the agent's belief about its own target color
+; 4) belief_own_color: the agent's belief about its own target color (sorry, we changed the name)
+; 5) beliefs_left_dirt: the vaccum's belief about the # of dirty tiles it still has to clean (used for termination condition)
+; 6) myradius: the patch-set that represents the visual radius of a vaccuum cleaner
+; 7) performed-cleaning: memory variable, boolean, indicating "I" just cleaned a dirty tile
+; 8) observations: patch-set that represents the result of the "oberv/see" action
+; 9) has_moved: memory variable, boolean, indicating "I just moved"
 vacuums-own [beliefs desire intention belief_own_color beliefs_left_dirt myradius performed-cleaning observations has_moved]
-
-
-to setup-antennas
-
-  ;; use a global variable to store the offsets list so we
-  ;; don't have to compute the same list (for a particular
-  ;; radius) over and over again
-  set include-central-patch? false
-  set nearby offsets vision_radius include-central-patch?
-
-
-end
-
-to draw-vac-antennas
-  ask myradius [
-    sprout-antennas 1 [
-    set shape "dot"
-    set size 0.3
-    set color 9.9
-    ]
-  ]
-
-end
-
-to-report offsets [n include-center?]
-  let result [list pxcor pycor] of patches with [abs pxcor + abs pycor <= n]
-  ifelse include-center?
-    [ report result ]
-    [ report remove [0 0] result ]
-end
 
 
 ; Public Domain:
@@ -89,7 +69,6 @@ to setup
   setup-patches
   setup-vacuums
   setup-ticks
-
 end
 
 
@@ -100,28 +79,36 @@ to go
   update-desires
   update-beliefs
   update-intentions
+  ; redraw our beautiful vision zone
+  ask vacuums [ if intention != "nothing" [ draw-vac-antennas self ] ]
+  ; if all vacuums have no more desires...then stop
+  if all? vacuums [ desire = false ] [ stop ]
   execute-actions
-
   tick
+  set time timer
 end
 
 
 ; --- Setup patches ---
 to setup-patches
-  let color_value 5
+  ; In this method you may create the environment (patches), using colors to define cells with various types of dirt.
+  ; initialise the colors we use, implemented as a list
+  set colors [red yellow green brown cyan violet gray ]
   let counter 1
-  set num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
+  ; total number of tiles
+  let num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
+  ; compute number of dirty tiles
   set total_dirty round (dirt_pct * num_of_tiles / 100)
+  ; color the dirty patches "for each agent". Every agent has to clean the same amount of tiles
   while [counter <= num_agents ] [
    ask n-of (round( total_dirty / num_agents ) ) patches with [pcolor = black] [
       ; set differnt type of dirt
-      set pcolor color_value
+      set pcolor item (counter - 1) colors
 
    ]
-   set color_value color_value + 10
    set counter counter + 1
   ]
-  ; In this method you may create the environment (patches), using colors to define cells with various types of dirt.
+
 end
 
 
@@ -129,38 +116,57 @@ end
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents.
   set-default-shape vacuums "ufo top"
-  let color_value 5
+  let c -1
+  ; create the agents and initialize them
   create-vacuums num_agents [
-    set color color_value
+    set c c + 1
+    set color item c colors
+    ; the clean patches are black, therefore move to a clean patch
     move-to one-of patches with [ pcolor = black ]
-    set color_value color_value + 10
-    set belief_own_color color_value
+    ; initialize the beliefs of our vacuum cleaner
+    ; belief in your own color, right?
+    set belief_own_color [color] of self
+    ; we model desire as a boolean variable, because a vacuum cleaner has only one desire
+    ; clean the room = true otherwise false = do nothing
     set desire true
-    set beliefs_left_dirt (total_dirty / num_agents)
-
-    set beliefs remove item 0 patches at-point patch-here
-
+    ; tell the vacuum cleaner how much dirty tiles it needs to clean
+    set beliefs_left_dirt round (total_dirty / num_agents)
+    ; set the initial beliefs about the location of the tiles to an empty list
+    set beliefs []
+    ; initially we want the vacuum cleaner only to observ its environment
     set intention "observ"
+    ; initialize some "memory" variables about, "what did I do just one second ago?"
     set performed-cleaning false
     set has_moved false
-  ]
-  setup-antennas
-
-  ask vacuums [
     ; determine the patches in vacuums radius
-    set myradius patches at-points nearby
-    draw-vac-antennas
+    set myradius patches in-radius vision_radius
+    draw-vac-antennas self
   ]
-  display
+
 end
 
 ; --- Setup ticks ---
 to setup-ticks
   ; In this method you may start the tick counter.
   reset-ticks
+  reset-timer
 end
 
+; draw the "antennas" of a vacuum cleaner which visualizes the vision radius of the agent
+to draw-vac-antennas [ vac ]
 
+  ask myradius [
+    sprout-antennas 1 [
+    set shape "dot"
+    set size 0.3
+    set color 9.9
+    create-antenna-link-with vac
+    ]
+  ]
+
+  display
+
+end
 
 ; --- Update desires ---
 to update-desires
@@ -168,9 +174,8 @@ to update-desires
   ; Keep in mind that now you have more than one agent.
   ask vacuums [
     if beliefs_left_dirt = 0
-     [ set desire false]
+     [ set desire false ]
   ]
-
 
 end
 
@@ -179,22 +184,20 @@ end
 to update-beliefs
   ; only update beliefs if the agens has some new observations
   ask vacuums [
-    if observations != 0
-    [
-
-     set beliefs (patch-set beliefs observations with [ pcolor = [belief_own_color] of myself ] )
-     print beliefs
-    ]
-    if performed-cleaning
-    [
+    ; if we just cleaned then remove belief of dirty patch
+    if performed-cleaning [
       set beliefs_left_dirt beliefs_left_dirt - 1
-      set beliefs remove-item  0 sort-by [ distance ?1 < distance ?2 ] beliefs
+      set beliefs remove item 0 beliefs beliefs
+      set performed-cleaning false
     ]
+    ; always update our beliefs based on our observations of the environment
+    if observations != 0 [
+      set beliefs remove-duplicates sentence beliefs [ self ] of observations with [ pcolor = [belief_own_color] of myself ]
+      set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+    ]
+    ; print beliefs
   ]
 
-
- ; You should update your agent's beliefs here.
- ; Please remember that you should use this method whenever your agents changes its position.
 end
 
 
@@ -204,21 +207,30 @@ to update-intentions
   ;clean dirt
   ask vacuums [
 
-  ifelse beliefs != 0 and patch-here = sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
-  [set intention "clean-dirt" ]
-  [ifelse has_moved
-    [ set intention "observ"
-      set has_moved false]
-    [ print beliefs
-      ifelse  count beliefs != 0
-      [ set intention "move-to-nearest-dirty"
-        set has_moved true]
-      [ set intention "move-random"
-        set has_moved true]
-
+  ; if the agent still believes there are dirty patches to clean left and the patch the vacuum is situated
+  ; on, corresponds to the nearest by dirty patch, then set intention to "clean-dirt"
+  ifelse length beliefs != 0 and patch-here = item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+    [ set intention "clean-dirt" ]
+    ; otherwise, if the vacuum just moved then first observ again
+    [ ifelse has_moved [
+        set intention "observ"
+        set has_moved false
+      ]
+      ; otherwise, are there still believes about dirty patches? then move-there
+      [
+        ifelse  length beliefs != 0 [
+          set intention "move-to-nearest-dirty"
+          set has_moved true
+        ]
+        ; otherswise just make a random move
+        [ set intention "move-random"
+          set has_moved true ]
+      ]
     ]
-  ]
-  ]
+  ; for this version if there is no desire left, set intention to "nothing", freeze and let the others do the work
+  if desire = false [ set intention "nothing" ]
+
+  ] ; end ask vacuums
 
 end
 
@@ -232,43 +244,61 @@ to execute-actions
   ; Please note that your agents should perform only one action per tick!
   print [intention] of vacuums
   ask vacuums [
-    if intention = "clean-dirt" [clean-dirt]
+    if intention = "clean-dirt" [ clean-dirt ]
     if intention = "observ" [ observe ]
-    if intention = "move-random" [move-random]
-    if intention = "move-to-nearest-dirty" [move-to-nearest-dirty]
+    if intention = "move-random" [ move-random self ]
+    if intention = "move-to-nearest-dirty" [ move-to-nearest-dirty self ]
 
   ]
 
 end
 
-to move-to-nearest-dirty
+; -- move to the closest by dirty patch the vacuum cleaner has to clean
+to move-to-nearest-dirty [ vac ]
 
-      move-to item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
-
-      set myradius patches at-points nearby
-      draw-vac-antennas
-
-
+  ; first get rid off all the antenna's, we're going to recreate them after the move
+  ask [ antennas ] of vac [ die ]
+  ask vac [
+    face item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
+    fd 1
+    ; update my vision radius because I moved
+    ; immediately update my radius (needed for the antennas)
+    set myradius patches in-radius vision_radius
+    set has_moved true
+  ]
 end
 
-to move-random
+; --- move a vacuum cleaner to a random patch in its neighborhood
+to move-random [ vac ]
+  ; first get rid off all the antenna's, we're going to recreate them after the move
+  ask [ antennas ] of vac [ die ]
 
+  ask vac [
     move-to one-of neighbors with [ not any? vacuums-here ]
-    set myradius patches at-points nearby
-    draw-vac-antennas
-
-
+    ; update my vision radius because I moved
+    ; immediately update my radius (needed for the antennas)
+    set myradius patches in-radius vision_radius
+    set has_moved true
+  ]
 end
 
+; --- Observ your neighborhood
 to observe
-  set observations patches at-points nearby
+
+  ; this is kind of odd, we could immediately update our "vision" by updating myradius
+  ; but we decided to do one "thing" at a time/tick
+  set observations myradius
+
 end
 
+; --- clean the dirt
 to clean-dirt
 
     if pcolor = belief_own_color and intention = "clean-dirt" [
+      move-to patch-here
       set pcolor black
-      set intention  0
+      ; reset intention
+      set intention 0
       set performed-cleaning true
     ]
 
@@ -310,7 +340,7 @@ dirt_pct
 dirt_pct
 0
 100
-68
+67
 1
 1
 NIL
@@ -376,7 +406,7 @@ num_agents
 num_agents
 2
 7
-3
+5
 1
 1
 NIL
@@ -391,7 +421,7 @@ vision_radius
 vision_radius
 0
 100
-3
+6
 1
 1
 NIL
@@ -444,7 +474,7 @@ Beliefs of vacuum 2
 MONITOR
 9
 262
-775
+367
 307
 Color of vacuum 1
 [belief_own_color] of vacuum 0
@@ -455,7 +485,7 @@ Color of vacuum 1
 MONITOR
 10
 453
-776
+365
 498
 Color of vacuum 2
 [belief_own_color] of vacuum 1
@@ -488,7 +518,7 @@ Desire of vacuum 2
 MONITOR
 11
 642
-777
+361
 687
 Color of vacuum 3
 [belief_own_color] of vacuum 2
@@ -536,6 +566,39 @@ MONITOR
 63
 Time to complete the task.
 time
+17
+1
+11
+
+MONITOR
+365
+262
+547
+307
+Dirt left
+[ beliefs_left_dirt ] of vacuum 0
+17
+1
+11
+
+MONITOR
+367
+453
+546
+498
+Dirt left
+[ beliefs_left_dirt ] of vacuum 1
+17
+1
+11
+
+MONITOR
+364
+641
+540
+686
+Dirt left
+[ beliefs_left_dirt ] of vacuum 2
 17
 1
 11
