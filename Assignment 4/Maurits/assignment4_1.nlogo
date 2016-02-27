@@ -5,7 +5,7 @@
 ; Jorg Sander/10881530
 
 
-; --- Assignment 4.2 & 4.3 - Template ---
+; --- Assignment 4.1 - Template ---
 ; Please use this template as a basis for the code to generate the behaviour of your team of vacuum cleaners.
 ; However, feel free to extend this with any variable or method you think is necessary.
 
@@ -25,7 +25,8 @@
 ; The following global variables are given.
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
-; 2) time: the total simulation time.
+; 2) colors: a list with the seven colors we're using (7? because that's the limit of the # of agents we use)
+; 3) time: represents the time that the game has lasted
 globals [total_dirty colors time]
 
 
@@ -41,6 +42,7 @@ breed [antennas antenna ]
 ; Links, we use the links to connect the vacuum cleaner with its antennas
 undirected-link-breed [antenna-links antenna-link]
 
+
 ; --- Local variables ---
 ; The following local variables are given.
 ;
@@ -48,16 +50,17 @@ undirected-link-breed [antenna-links antenna-link]
 ; 2) desire: the agent's current desire
 ; 3) intention: the agent's current intention
 ; 4) belief_own_color: the agent's belief about its own target color (sorry, we changed the name)
-; 5) other_colors: the agent's belief about the target colors of other agents
-; 6) outgoing_messages: list of messages sent by the agent to other agents
-; 7) incoming_messages: list of messages received by the agent from other agents
-; 8) beliefs_left_dirt: the vaccum's belief about the # of dirty tiles it still has to clean (used for termination condition)
-; 9) myradius: the patch-set that represents the visual radius of a vaccuum cleaner
-; 10) performed-cleaning: memory variable, boolean, indicating "I" just cleaned a dirty tile
-; 11) observations: patch-set that represents the result of the "oberv/see" action
-; 12) has_moved: memory variable, boolean, indicating "I just moved"
-vacuums-own [beliefs desire intention belief_own_color beliefs_left_dirt other_colors outgoing_messages incoming_messages myradius performed-cleaning observations has_moved]
+; 5) beliefs_left_dirt: the vaccum's belief about the # of dirty tiles it still has to clean (used for termination condition)
+; 6) myradius: the patch-set that represents the visual radius of a vaccuum cleaner
+; 7) performed-cleaning: memory variable, boolean, indicating "I" just cleaned a dirty tile
+; 8) observations: patch-set that represents the result of the "oberv/see" action
+; 9) has_moved: memory variable, boolean, indicating "I just moved"
+vacuums-own [beliefs desire intention belief_own_color beliefs_left_dirt myradius performed-cleaning observations has_moved]
 
+
+; Public Domain:
+; To the extent possible under law, Uri Wilensky has waived all
+; copyright and related or neighboring rights to this model.
 
 ; --- Setup ---
 to setup
@@ -72,17 +75,15 @@ end
 ; --- Main processing cycle ---
 to go
   ; This method executes the main processing cycle of an agent.
-  ; For Assignment 4.2 and 4.3, this involves updating desires, beliefs and intentions, executing actions, and sending messages (and advancing the tick counter).
+  ; For Assignment 4.1, this involves updating desires, beliefs and intentions, and executing actions (and advancing the tick counter).
   update-desires
   update-beliefs
   update-intentions
-  execute-actions
   ; redraw our beautiful vision zone
   ask vacuums [ if intention != "nothing" [ draw-vac-antennas self ] ]
   ; if all vacuums have no more desires...then stop
   if all? vacuums [ desire = false ] [ stop ]
   execute-actions
-  send-messages
   tick
   set time timer
 end
@@ -302,21 +303,15 @@ to clean-dirt
     ]
 
 end
-
-; --- Send messages ---
-to send-messages
-  ; Here should put the code related to sending messages to other agents.
-  ; Note that this could be seen as a special case of executing actions, but for conceptual clarity it has been put in a separate method.
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 786
-46
-1303
-584
+17
+1386
+638
 12
 12
-20.31
+23.6
 1
 10
 1
@@ -337,25 +332,25 @@ ticks
 30.0
 
 SLIDER
-6
-133
-772
-166
+9
+118
+775
+151
 dirt_pct
 dirt_pct
 0
 100
-3
+67
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-6
-101
-390
-134
+9
+86
+393
+119
 NIL
 go
 NIL
@@ -369,10 +364,10 @@ NIL
 1
 
 BUTTON
-389
-101
-772
-134
+392
+86
+775
+119
 NIL
 go
 T
@@ -386,10 +381,10 @@ NIL
 1
 
 BUTTON
-6
-243
-772
-276
+9
+229
+775
+262
 NIL
 setup
 NIL
@@ -403,40 +398,40 @@ NIL
 1
 
 SLIDER
-6
-169
-772
-202
+9
+155
+775
+188
 num_agents
 num_agents
 2
 7
-3
+5
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-5
-206
-772
-239
+8
+192
+775
+225
 vision_radius
 vision_radius
 0
 100
-2
+6
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-457
-276
-773
-321
+9
+349
+775
+394
 Intention of vacuum 1
 [intention] of vacuum 0
 17
@@ -444,10 +439,10 @@ Intention of vacuum 1
 11
 
 MONITOR
-114
-276
-459
-321
+9
+393
+775
+438
 Desire of vacuum 1
 [desire] of vacuum 0
 17
@@ -455,10 +450,10 @@ Desire of vacuum 1
 11
 
 MONITOR
-6
-320
-774
-365
+9
+305
+775
+350
 Beliefs of vacuum 1
 [beliefs] of vacuum 0
 17
@@ -466,10 +461,10 @@ Beliefs of vacuum 1
 11
 
 MONITOR
-5
-465
-772
-510
+10
+497
+776
+542
 Beliefs of vacuum 2
 [beliefs] of vacuum 1
 17
@@ -477,10 +472,10 @@ Beliefs of vacuum 2
 11
 
 MONITOR
-6
-276
-115
-321
+9
+262
+367
+307
 Color of vacuum 1
 [belief_own_color] of vacuum 0
 17
@@ -488,10 +483,10 @@ Color of vacuum 1
 11
 
 MONITOR
-5
-421
-115
-466
+10
+453
+365
+498
 Color of vacuum 2
 [belief_own_color] of vacuum 1
 17
@@ -499,10 +494,10 @@ Color of vacuum 2
 11
 
 MONITOR
-452
-421
-772
-466
+10
+541
+776
+586
 Intention of vacuum 2
 [intention] of vacuum 1
 17
@@ -510,10 +505,10 @@ Intention of vacuum 2
 11
 
 MONITOR
-115
-421
-452
-466
+10
+585
+776
+630
 Desire of vacuum 2
 [desire] of vacuum 1
 17
@@ -521,10 +516,10 @@ Desire of vacuum 2
 11
 
 MONITOR
-5
-566
-113
-611
+11
+642
+361
+687
 Color of vacuum 3
 [belief_own_color] of vacuum 2
 17
@@ -532,10 +527,10 @@ Color of vacuum 3
 11
 
 MONITOR
-5
-610
-772
-655
+11
+686
+777
+731
 Beliefs of vacuum 3
 [beliefs] of vacuum 2
 17
@@ -543,10 +538,10 @@ Beliefs of vacuum 3
 11
 
 MONITOR
-453
-566
-772
-611
+11
+730
+777
+775
 Intention of vacuum 3
 [intention] of vacuum 2
 17
@@ -554,10 +549,10 @@ Intention of vacuum 3
 11
 
 MONITOR
-113
-566
-453
-611
+11
+774
+777
+819
 Desire of vacuum 3
 [desire] of vacuum 2
 17
@@ -565,78 +560,45 @@ Desire of vacuum 3
 11
 
 MONITOR
-6
-364
-385
-409
-Outgoing messages vacuum 1
-sort ([outgoing_messages] of vacuum 0)
-17
-1
-11
-
-MONITOR
-385
-364
-774
-409
-Incoming messages vacuum 1
-[incoming_messages] of vacuum 0
-17
-1
-11
-
-MONITOR
-5
-508
-389
-553
-Outgoing messages vacuum 2
-sort ([outgoing_messages] of vacuum 1)
-17
-1
-11
-
-MONITOR
-388
-508
-772
-553
-Incoming messages vacuum 2
-[incoming_messages] of vacuum 1
-17
-1
-11
-
-MONITOR
-6
-653
-389
-698
-Outgoing messages vacuum 3
-sort ([outgoing_messages] of vacuum 2)
-17
-1
-11
-
-MONITOR
-389
-653
-772
-698
-Incoming messages vacuum 3
-[incoming_messages] of vacuum 2
-17
-1
-11
-
-MONITOR
-7
-47
-771
-92
+9
+18
+775
+63
 Time to complete the task.
 time
+17
+1
+11
+
+MONITOR
+365
+262
+547
+307
+Dirt left
+[ beliefs_left_dirt ] of vacuum 0
+17
+1
+11
+
+MONITOR
+367
+453
+546
+498
+Dirt left
+[ beliefs_left_dirt ] of vacuum 1
+17
+1
+11
+
+MONITOR
+364
+641
+540
+686
+Dirt left
+[ beliefs_left_dirt ] of vacuum 2
 17
 1
 11
