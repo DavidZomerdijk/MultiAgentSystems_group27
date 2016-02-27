@@ -156,6 +156,7 @@ to setup-vacuums
       set agent_index_try agent_index_try + 1
     ]
     set own_color_index agent_index_try
+    set incoming_messages []
 
   ]
 
@@ -203,7 +204,7 @@ to update-beliefs
  ; You should update your agent's beliefs here.
  ; Please remember that you should use this method whenever your agents changes its position.
  ; Also note that this method should distinguish between two cases, namely updating beliefs based on 1) observed information and 2) received messages.
-  ask vacuums [
+ ask vacuums [
     ; if we just cleaned then remove belief of dirty patch
     if performed-cleaning [
       set beliefs_left_dirt beliefs_left_dirt - 1
@@ -213,7 +214,17 @@ to update-beliefs
     ; always update our beliefs based on our observations of the environment
     if observations != 0 [
       set beliefs remove-duplicates sentence beliefs [ self ] of observations with [ pcolor = [belief_own_color] of myself ]
+      print("beliefs")
+      print( beliefs)
+      set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
     ]
+    ;insert incoming messages in beliefs
+    foreach incoming_messages
+      [
+        set beliefs remove-duplicates sentence beliefs [self] of ?
+      ]
+
+
 
     if observations != 0 [
       set belief_other_colors remove-duplicates sentence belief_other_colors [ self ] of observations with [ pcolor != [belief_own_color] of myself ]
@@ -228,13 +239,11 @@ end
 ; --- Update intentions ---
 to update-intentions
   ; You should update your agent's intentions here.
-  ; You should update your agent's intentions here.
   ;clean dirt
   ask vacuums [
 
   ; if the agent still believes there are dirty patches to clean left and the patch the vacuum is situated
   ; on, corresponds to the nearest by dirty patch, then set intention to "clean-dirt"
-
   ifelse length beliefs != 0 and patch-here = item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
     [ set intention "clean-dirt" ]
     ; otherwise, if the vacuum just moved then first observ again
@@ -259,7 +268,6 @@ to update-intentions
   ] ; end ask vacuums
 
 end
-
 
 ; --- Execute actions ---
 to execute-actions
@@ -334,11 +342,26 @@ to send-messages
 
 
 ask vacuums [
+
   set outgoing_messages []
-foreach colors [ ;eventueel zou je van colors, je eigen colorwaarde kunnen weghalen.
+
+foreach colors [
   if observations != 0 [
-    let temp_obs observations with [pcolor = ?1]
-    set outgoing_messages sentence outgoing_messages temp_obs
+    let temp_obs sentence [] observations with [pcolor = ?1]
+
+
+    ;the list without elements that have already been send
+    let temp_obs_cleaned []
+    foreach temp_obs [
+      let inlist false
+      let temp_element ?
+      foreach belief_other_colors [
+        if temp_element = ? [set inlist true]
+      ]
+      if not inlist [ set temp_obs_cleaned sentence temp_obs_cleaned temp_element ]
+    ]
+
+    set outgoing_messages sentence outgoing_messages temp_obs_cleaned
   ]
   ]
 ]
@@ -394,7 +417,7 @@ dirt_pct
 dirt_pct
 0
 100
-17
+7
 1
 1
 NIL
