@@ -149,6 +149,14 @@ to setup-vacuums
     ; determine the patches in vacuums radius
     set myradius patches in-radius vision_radius
     draw-vac-antennas self
+
+    ;set own_color_index, necessary to select patches from messages.
+    let agent_index_try 0
+    while[ belief_own_color != item agent_index_try colors] [
+      set agent_index_try agent_index_try + 1
+    ]
+    set own_color_index agent_index_try
+
   ]
 
 end
@@ -340,11 +348,11 @@ ask vacuums [
   set incoming_messages []
   let agent_index 0
   while [num_agents != agent_index ][
-    let message [outgoing_messages] of vacuum agent_index
-    print( message )
-    set incoming_messages sentence incoming_messages message
+    if  [outgoing_messages] of vacuum agent_index != []  [
+        let message item own_color_index [outgoing_messages] of vacuum agent_index
+         set incoming_messages sentence incoming_messages message
+    ]
     set agent_index agent_index  + 1
-
      ]
 ]
 
