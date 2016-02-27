@@ -54,7 +54,7 @@ undirected-link-breed [antenna-links antenna-link]
 ; 10) has_moved: memory variable, boolean, indicating "I just moved"
 ; 11) outgoing_messages: list of messages sent by the agent to other agents
 ; 12) incoming_messages: list of messages received by the agent from other agents
-; 13) own_color_beliefs
+; 13) own_color_index: gives the index of the color one is.
 vacuums-own [beliefs desire intention belief_own_color belief_other_colors beliefs_left_dirt myradius performed-cleaning observations has_moved outgoing_messages incoming_messages own_color_index]
 
 
@@ -91,16 +91,17 @@ end
 ; --- Setup patches ---
 to setup-patches
   ; In this method you may create the environment (patches), using colors to define cells with various types of dirt.
-    ; In this method you may create the environment (patches), using colors to define cells with various types of dirt.
-  ; initialise the colors we use, implemented as a list
+  ; all the possible colors we can use
   let all_colors [red yellow green brown cyan violet gray ]
-  let count_color  num_agents
+  ; this code will make the above list into a list of the same length as the number of agents
+  let count_color num_agents
   set colors []
   while [count_color != 0] [
     set colors sentence colors item 0 all_colors
     set all_colors remove item 0 all_colors all_colors
     set count_color count_color - 1
   ]
+
   let counter 1
   ; total number of tiles
   let num_of_tiles ((max-pxcor * 2) + 1) * ((max-pycor * 2) + 1)
@@ -182,9 +183,7 @@ to draw-vac-antennas [ vac ]
     create-antenna-link-with vac
     ]
   ]
-
   display
-
 end
 
 ; --- Update desires ---
@@ -214,34 +213,28 @@ to update-beliefs
     ; always update our beliefs based on our observations of the environment
     if observations != 0 [
       set beliefs remove-duplicates sentence beliefs [ self ] of observations with [ pcolor = [belief_own_color] of myself ]
-      print("beliefs")
-      print( beliefs)
       set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
     ]
-    ;insert incoming messages in beliefs
+
+    ;update our beliefs on the basis of the incoming message
     foreach incoming_messages
       [
         set beliefs remove-duplicates sentence beliefs [self] of ?
       ]
 
-
-
+    ;update our beliefs about dirt that is not ours.
     if observations != 0 [
       set belief_other_colors remove-duplicates sentence belief_other_colors [ self ] of observations with [ pcolor != [belief_own_color] of myself ]
     ]
-
-
   ]
-
 end
 
 
-; --- Update intentions ---
+; --- Update intentions --- remained equal to 4.1
 to update-intentions
-  ; You should update your agent's intentions here.
+  ;You should update your agent's intentions here.
   ;clean dirt
   ask vacuums [
-
   ; if the agent still believes there are dirty patches to clean left and the patch the vacuum is situated
   ; on, corresponds to the nearest by dirty patch, then set intention to "clean-dirt"
   ifelse length beliefs != 0 and patch-here = item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
@@ -269,12 +262,12 @@ to update-intentions
 
 end
 
-; --- Execute actions ---
+; --- Execute actions ---remained equal to 4.1
 to execute-actions
   ; Here you should put the code related to the actions performed by your agent: moving, cleaning, and (actively) looking around.
   ; Please note that your agents should perform only one action per tick!
-    ; You should update your agent's intentions here.
-  print [intention] of vacuums
+  ; You should update your agent's intentions here.
+  ;print [intention] of vacuums
   ask vacuums [
     if intention = "clean-dirt" [ clean-dirt ]
     if intention = "observ" [ observe ]
@@ -284,7 +277,7 @@ to execute-actions
   ]
 end
 
-; -- move to the closest by dirty patch the vacuum cleaner has to clean
+; -- move to the closest by dirty patch the vacuum cleaner has to clean --same as in 4.1
 to move-to-nearest-dirty [ vac ]
 
   ; first get rid off all the antenna's, we're going to recreate them after the move
@@ -301,7 +294,7 @@ to move-to-nearest-dirty [ vac ]
   ]
 end
 
-; --- move a vacuum cleaner to a random patch in its neighborhood
+; --- move a vacuum cleaner to a random patch in its neighborhood --same as in 4.1
 to move-random [ vac ]
   ; first get rid off all the antenna's, we're going to recreate them after the move
   ask [ antennas ] of vac [ die ]
@@ -315,7 +308,7 @@ to move-random [ vac ]
   ]
 end
 
-; --- Observ your neighborhood
+; --- Observ your neighborhood --same as in 4.1
 to observe
 
   ; this is kind of odd, we could immediately update our "vision" by updating myradius
@@ -324,7 +317,7 @@ to observe
 
 end
 
-; --- clean the dirt
+; --- clean the dirt --same as in 4.1
 to clean-dirt
 
     if pcolor = belief_own_color and intention = "clean-dirt" [
@@ -340,36 +333,44 @@ end
 ; --- Send messages ---
 to send-messages
 
-
+;here we set the outgoing messages for every vacuum
 ask vacuums [
-
+;(re)initialize outgoing messages
   set outgoing_messages []
+  foreach colors [
+    if observations != 0 [
+      ;a temp list with the observations with the pcolor of the color
+      let temp_obs sentence [] observations with [pcolor = ?1]
 
-foreach colors [
-  if observations != 0 [
-    let temp_obs sentence [] observations with [pcolor = ?1]
+      ;the list without elements that have already been send
+      let temp_obs_cleaned []
 
-
-    ;the list without elements that have already been send
-    let temp_obs_cleaned []
-    foreach temp_obs [
-      let inlist false
-      let temp_element ?
-      foreach belief_other_colors [
-        if temp_element = ? [set inlist true]
+      ;a very inefficient loop that checks whether an element already has been send and if this is not the case
+      ;appends this to temp_obs_cleaned
+      foreach temp_obs [
+        let inlist false
+        let temp_element ?
+        foreach belief_other_colors [
+          if temp_element = ? [set inlist true]
+        ]
+        if not inlist [ set temp_obs_cleaned sentence temp_obs_cleaned temp_element ]
       ]
-      if not inlist [ set temp_obs_cleaned sentence temp_obs_cleaned temp_element ]
-    ]
 
-    set outgoing_messages sentence outgoing_messages temp_obs_cleaned
-  ]
+      ;append list outgoing messages with the messages for the color
+      set outgoing_messages sentence outgoing_messages temp_obs_cleaned
+    ]
   ]
 ]
 
+;here we set the incoming messages for every vacuum
 ask vacuums [
-
+  ;(re)initialize incoming messages
   set incoming_messages []
   let agent_index 0
+  ;check outgoing messages of all agents for our messages we need.
+  ;if we need it we append it to incoming_messages.
+  ;we know which message we need because of the own_color_index that tells us
+  ;the location of the informtion we need in the outgoing_messages of the other agents
   while [num_agents != agent_index ][
     if  [outgoing_messages] of vacuum agent_index != []  [
         let message item own_color_index [outgoing_messages] of vacuum agent_index
@@ -483,7 +484,7 @@ num_agents
 num_agents
 2
 7
-3
+6
 1
 1
 NIL
