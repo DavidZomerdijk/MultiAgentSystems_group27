@@ -202,11 +202,12 @@ to update-beliefs
       set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
 
       foreach color [
-        ; Dit is waar het mis gaat, ik heb geen idee hoe ik de patches moet tellen met een bepaalde kleur, dit lijkt alleen te kunnen vanuit een agentset, maar daar kunnen we geen union van nemen. Waardoor we niet unieke agents krijgen
-        ; omdat er geen dictionaries zijn kunnen we daar de informatie niet in opslaan anders konden we foreach belief_observed_patches en dan mappen op kleur,
+        ; Dit is waar het mis gaat, ik heb geen idee hoe ik de patches moet tellen met een bepaalde kleur, dit lijkt alleen te kunnen vanuit een agentset, maar daar kunnen we geen union van nemen. Waardoor we niet unieke patches krijgen.
+        ; Omdat er geen dictionaries zijn kunnen we daar de informatie niet in opslaan anders konden we foreach belief_observed_patches en dan mappen op kleur,
 
 
-        ; TODO uitvinden hoe we het aantal patches met color X kunnen tellen vanuit belief_observed_patches
+        ; TODO uitvinden hoe we het aantal patches met color X kunnen tellen vanuit belief_observed_patches list
+        let count_color ; ?? heb veel geprobeerd maar niks werkt
         if count_color >= min_observ_dirt [
           if (member? send_color belief_colors_others = false) [
             set belief own_color ? ; set belief own color
@@ -219,9 +220,9 @@ to update-beliefs
 
 end
 
-; Verder note
+; **** Verder NOTE *****
 
-; wat we zouden kunnen doen, maar wat echr heel erg hardcoded is is het volgende
+; wat we zouden kunnen doen, maar wat echt heel erg hardcoded is is het volgende
         ;let counter_list [0 0 0 0 0 0 0] ; counter voor alle 7 kleuren maps with [red yellow green brown cyan violet gray ]
         ; foreach  belief_observed_patches [
         ; if pcolor = red
@@ -236,14 +237,14 @@ end
         ; foreach counter_list [
         ;  if ? >= min_observ_dirt
         ;     if (member? send_color belief_colors_others = false) [
-        ;        [ set belief own_color ? ; set belief own color
-        ;            send_choosen_color ? ; sent color to other agent [break]]]
+        ;        [ set belief own_color item counter color_list  ; set belief own color
+        ;            send_choosen_color [item counter color_list] ; sent color to other agent [break]]]
         ;         set counter counter + 1
         ;]
         ;
         ; we moeten dan een belief_color_observed maken voor iedere kleur die mogelijk in de wereld is (ookal is die niet aanwezig) en iedere tick moet belief_red_observed op 0 gezet worden omdat ie anders doortelt,
         ; omdat belief_observed_patches alle unieke observed patches tot nu toe. Dit zou ongeveer moeten werken (ik weet alleen niet of en hoe dat break statement bestaat) maar het is wel heeeeeeeeeel erg houterig geprogrammeerd . Maar
-        ; ik zie zosnel ook geen oplossing
+        ; ik zie zo snel ook geen oplossing
 
 
         ; wat nog een laatste mogelijkheid is dat je per patch die je ziet de coordinaten opslaat iets van lput (xcoord ycoord) . En steeds checkt of je die gezien hebt en dan een lijst maakt voor rood, groen, geel, en daaarvan de length neemt
