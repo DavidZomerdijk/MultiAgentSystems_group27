@@ -17,18 +17,14 @@
 ;
 ; 3) vision_radius: distance (in terms of number of cells) that the agents can 'see'
 ; For instance, if this radius is 3, then agents will be able to observe dirt in a cell that is 3 cells away from their own location.
-;
-; 4) patch_threshold: variable that is used to decide whether the number of patches from a specific color observed (by vaccum cleaner)
-;
+
 
 ; --- Global variables ---
 ; The following global variables are given.
 ;
 ; 1) total_dirty: this variable represents the amount of dirty cells in the environment.
-; 2) colors: a list with the seven colors we're using (7? because that's the limit of the # of agents we use)
-; 3) time: represents the time that the game has lasted
-; 4) free_colors: list with "used" colors that agents can decide to "clean" (i.e. tiles with that particular color)
-globals [total_dirty colors time free_colors]
+; 2) time: the total simulation time.
+globals [total_dirty colors time]
 
 
 ; --- Agents ---
@@ -59,9 +55,7 @@ undirected-link-breed [antenna-links antenna-link]
 ; 11) outgoing_messages: list of messages sent by the agent to other agents
 ; 12) incoming_messages: list of messages received by the agent from other agents
 ; 13) own_color_index: gives the index of the color one is.
-; 14) c_patch_count: holds the # of patches for each color that is used in the simulation
-vacuums-own [beliefs desire intention belief_own_color belief_other_colors beliefs_left_dirt myradius performed-cleaning
-  observations has_moved outgoing_messages incoming_messages own_color_index c_patch_count]
+vacuums-own [beliefs desire intention belief_own_color belief_other_colors beliefs_left_dirt myradius performed-cleaning observations has_moved outgoing_messages incoming_messages own_color_index]
 
 
 ; --- Setup ---
@@ -86,10 +80,7 @@ to go
   ; if all vacuums have no more desires...then stop
   if all? vacuums [ desire = false ] [ stop ]
   execute-actions
-  ; we start sending messages when all agents "have found their color"
-  if all? vacuums [ color != white ] [
-    send-messages
-  ]
+  send-messages
   ; redraw our beautiful vision zone
   ask vacuums [ if intention != "nothing" [ draw-vac-antennas self ] ]
   tick
@@ -105,8 +96,6 @@ to setup-patches
   ; this code will make the above list into a list of the same length as the number of agents
   let count_color num_agents
   set colors []
-  set free_colors []
-
   while [count_color != 0] [
     set colors sentence colors item 0 all_colors
     set all_colors remove item 0 all_colors all_colors
@@ -125,8 +114,6 @@ to setup-patches
       set pcolor item (counter - 1) colors
 
    ]
-   ; add color to the "free color list", which we'll use for the coordination task
-   set free_colors lput item (counter - 1) colors free_colors
    set counter counter + 1
   ]
 end
@@ -136,17 +123,16 @@ end
 to setup-vacuums
   ; In this method you may create the vacuum cleaner agents.
   set-default-shape vacuums "ufo top"
-
+  let c -1
   ; create the agents and initialize them
   create-vacuums num_agents [
-
-    ; initially all agents are white, they have to "find their color"
-    set color white
-    set belief_own_color white
+    set c c + 1
+    set color item c colors
     ; the clean patches are black, therefore move to a clean patch
     move-to one-of patches with [ pcolor = black ]
     ; initialize the beliefs of our vacuum cleaner
-
+    ; belief in your own color, right?
+    set belief_own_color [color] of self
     ; we model desire as a boolean variable, because a vacuum cleaner has only one desire
     ; clean the room = true otherwise false = do nothing
     set desire true
@@ -164,35 +150,19 @@ to setup-vacuums
     ; determine the patches in vacuums radius
     set myradius patches in-radius vision_radius
     draw-vac-antennas self
-    ; initialize the list that holds the colored patch counts
-    set c_patch_count []
-    foreach free_colors [ set c_patch_count lput 0 c_patch_count ]
 
     ;set own_color_index, necessary to select patches from messages.
-    ; Jorg: Ik kan niet zo snel inschatten of dat nog goed gaat, immers, een agent heeft nu de kleur "wit"
-    ; wat ik nu gedaan heb, als de agent zijn kleur "gevonden" heeft dan wordt dit nog een keer aangeroepen
-    ; daarom heb ik het naar een procedure verplaatst
-
-    ;setup-agent-index
-
-    set own_color_index 0
+    let agent_index_try 0
+    while[ belief_own_color != item agent_index_try colors] [
+      set agent_index_try agent_index_try + 1
+    ]
+    set own_color_index agent_index_try
     set incoming_messages []
 
   ]
 
 end
 
-
-;
-to setup-agent-index
-
-  let agent_index_try 0
-  while[ belief_own_color != item agent_index_try colors] [
-      set agent_index_try agent_index_try + 1
-  ]
-  set own_color_index agent_index_try
-
-end
 
 ; --- Setup ticks ---
 to setup-ticks
@@ -245,68 +215,23 @@ to update-beliefs
     ]
     ; always update our beliefs based on our observations of the environment
     if observations != 0 [
-
-      ; only do this if you don't have a "real" color yet i.e. still "white"
-      if belief_own_color = white [
-      ; if only one color left then take that one
-        ifelse length free_colors = 1 [
-          set color item 0 free_colors
-          ; remove color item from free colors so it's empty
-          set free_colors remove item 0 free_colors free_colors
-          ; redundant, but for clearity we'll still use this belief variable
-          set belief_own_color [color] of self
-          setup-agent-index
-        ]
-        [ find-my-color self ]
-      ]
-
       set beliefs remove-duplicates sentence beliefs [ self ] of observations with [ pcolor = [belief_own_color] of myself ]
       set beliefs sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs
     ]
 
     ;update our beliefs on the basis of the incoming message
-    if belief_own_color != white [
-      foreach incoming_messages
-        [
-          set beliefs remove-duplicates sentence beliefs [self] of ?
-        ]
-    ]
+    foreach incoming_messages
+      [
+        set beliefs remove-duplicates sentence beliefs [self] of ?
+      ]
+
     ;update our beliefs about dirt that is not ours.
-    if observations != 0 and belief_own_color != white [
+    if observations != 0 [
       set belief_other_colors remove-duplicates sentence belief_other_colors [ self ] of observations with [ pcolor != [belief_own_color] of myself ]
     ]
   ]
 end
 
-
-; count the different colored patches that I observed and try to claim a color that is still not taken
-to find-my-color [ vac ]
-
-  let cnt_colors []
-  let c 0
-  ; loop through the "free colors" and count all patches that I just observed. sum with the counters that
-  ; were stored in my "c_patch_count" list
-  foreach free_colors [
-    set cnt_colors lput (length [ self ] of observations with [ pcolor =  ? ] + item c c_patch_count) cnt_colors
-    set c c + 1
-  ]
-  set c_patch_count cnt_colors
-  let j 0
-  foreach c_patch_count [
-     if ? > patch_threshold [
-       ; try to claim color
-       set color item j free_colors
-       set belief_own_color [ color ] of vac
-       set free_colors remove item j free_colors free_colors
-     ]
-     ; break out of loop if agent found color
-     if belief_own_color != white [
-       setup-agent-index
-       stop
-     ]
-  ]
-
-end
 
 ; --- Update intentions --- remained equal to 4.1
 to update-intentions
@@ -490,7 +415,7 @@ dirt_pct
 dirt_pct
 0
 100
-57
+7
 1
 1
 NIL
@@ -556,7 +481,7 @@ num_agents
 num_agents
 2
 7
-4
+5
 1
 1
 NIL
@@ -785,21 +710,6 @@ time
 17
 1
 11
-
-SLIDER
-786
-591
-958
-624
-patch_threshold
-patch_threshold
-0
-100
-15
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
