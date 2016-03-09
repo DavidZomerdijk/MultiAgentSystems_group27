@@ -1,21 +1,85 @@
+
+
+
+breed [builders builder]
+breed [embankment embankment_part]
+breed [depots depot]
+globals [costline_color map_offset]
+
+
+
+builders-own [belief_explored_patches belief_costline_patches beliefs_caches desires intentions builder_vision_angle]
+depots-own [ resources ]
+embankment-own [hight]
+
+
 to setup
+  setup_globals
   clear-all
   setup-coastline
-  setup-caches
+  setup-depots
+  setup-builders
   reset-ticks
 end
 
+to go
+  update-desires
+  update-beliefs
+  update-intentions
+  execute-actions
+  tick
+end
 
-to setup-caches
-  create-turtles 3 [
+to update-desires
+end
+
+to update-beliefs
+end
+
+to update-intentions
+  ask builders [
+  if-else intentions = "explore world"
+  [ print "test" ]
+  [ print "test" ]
+ ]
+end
+
+to execute-actions
+  ask builders [
+    if intentions = "explore world" [ explore-world self ]
+  ]
+end
+
+to setup_globals
+  set costline_color 96
+  set map_offset 20
+end
+
+to setup-builders
+  create-builders  amount-of-workers[
+    set shape "person"
+    set size 7
+    set builder_vision_angle vision-angle
+    set color blue
+    set intentions "explore world"
+    move-to one-of patches with [pcolor != 96 and pcolor != 95 and pcolor != 94 and pcolor != 93
+      and pxcor < floor (max-pxcor / 2) and not any? turtles-here and pxcor > map_offset and pycor > map_offset]
+    set heading 0
+  ]
+
+
+end
+
+to setup-depots
+  create-depots amount-of-depots [
     set shape "factory"
     set color red
     set size 7
+    set resources resources-per-depot
     move-to one-of patches with [pcolor != 96 and pcolor != 95 and pcolor != 94 and pcolor != 93
       and pxcor < floor (max-pxcor / 2) ]
     set heading 0
   ]
-
 end
 
 ;; set up the basic environment with the coastline
@@ -36,7 +100,7 @@ to setup-coastline
       if color != black [
         ;; random-poisson gives small variations, sometimes
         ;; larger ones
-        let x ( xcor + one-of [1 -1] * random-poisson ( coastline_bumpiness ) )
+        let x ( xcor + one-of [1 -1] * random-poisson ( coastline-bumpiness ) )
         ;; prevent the drawing turtle from wrapping horizontally
         ;; while contouring the coastline
         if patch-at (x - xcor) 0 != nobody
@@ -67,12 +131,39 @@ to setup-coastline
   ]
   ask patches with [pcolor = black] [ set pcolor terrain-color ]
 end
+
+to explore_costline
+end
+
+to explore_world
+  ;; random moves to explore the world
+end
+
+to explore-world  [builder]
+  ask builder [
+    if-else [pcolor] of patch-ahead 1 = costline_color
+    ;; als een agent eenmaal een costline gevonden heeft moet hij deze 'slim' verkennen
+    [ ;; explore costline
+      set intentions "explore costline"
+    ]
+    [
+      move-random self
+    ]
+  ]
+end
+
+
+to move-random [ builder ]
+  ask builder [
+    move-to one-of patches with [ not any? turtles ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-326
-18
-1241
-554
+688
+12
+1603
+548
 90
 50
 5.0
@@ -100,11 +191,11 @@ SLIDER
 62
 185
 95
-coastline_bumpiness
-coastline_bumpiness
+coastline-bumpiness
+coastline-bumpiness
 0
 10
-3
+1
 1
 1
 NIL
@@ -118,6 +209,83 @@ BUTTON
 NIL
 setup
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+15
+158
+187
+191
+amount-of-depots
+amount-of-depots
+0
+15
+7
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+12
+109
+189
+142
+amount-of-workers
+amount-of-workers
+0
+30
+5
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+13
+210
+185
+243
+vision-angle
+vision-angle
+0
+360
+64
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+11
+263
+197
+296
+resources-per-depot
+resources-per-depot
+0
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+BUTTON
+93
+19
+156
+52
+go
+go\n
+T
 1
 T
 OBSERVER
