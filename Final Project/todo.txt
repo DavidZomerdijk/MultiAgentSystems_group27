@@ -1,0 +1,14 @@
+TODO Final Project.
+
+
+Hier zijn nog een aantal to-do's voor het final project, voor het exploring gedeelte.
+
+1) Bij de random movement, zorg ervoor dat als een agent water ziet en hij is niet de kustlijn aan het verkennen (dit is het geval als de volledige
+kustlijn bekend is), dat hij niet het water inloopt.
+2) ik zoek de kunstlijn nu af door naar de dichtbijzijnste volgende patch te gaan, hierdoor komen agents soms in een local-minima zodat ze niet de 
+volledige kustlijn afzoeken. Dit moet anders maar ik zie even niet zosnel hoe?
+3) ik houd nog geen lijst bij met alle bezochte patches, dit moeten we denk ik wel doen voor effiecentie
+4)  de code moet nog omgegooid worden, er zit nog geen observe gedeelte in, alles gaat direct naar beliefs dit moet anders.
+ook zijn sommige dingen nog hardcoded, zoals kleuren, dit moet variablelen worden.
+
+
