@@ -1,18 +1,32 @@
 to setup
   clear-all
   setup-coastline
-
+  setup-caches
   reset-ticks
 end
 
+
+to setup-caches
+  create-turtles 3 [
+    set shape "factory"
+    set color red
+    set size 7
+    move-to one-of patches with [pcolor != 96 and pcolor != 95 and pcolor != 94 and pcolor != 93
+      and pxcor < floor (max-pxcor / 2) ]
+    set heading 0
+  ]
+
+end
+
+;; set up the basic environment with the coastline
 to setup-coastline
 
   let terrain-color 44
 
   ;; first use a turtle to draw the surface of the coastline
   create-turtles 1 [
-    set color blue
-    setxy floor (max-pxcor / 2) min-pycor
+    set color 96
+    setxy floor (max-pxcor * 0.75) min-pycor
     set heading 0
     repeat world-height [
       set pcolor color
@@ -40,14 +54,14 @@ to setup-coastline
       ;; if the drawing turtle is already at the bottom it should not continue
       if not can-move? 1 [ die ]
       fd 1
-      set pcolor blue
+      set pcolor 95
       fd 1
       while [ can-move? 1 ]
       [
-        set pcolor blue
+        set pcolor 94
         fd 1
       ]
-      set pcolor blue
+      set pcolor 93
       die
     ]
   ]
@@ -90,7 +104,7 @@ coastline_bumpiness
 coastline_bumpiness
 0
 10
-2
+3
 1
 1
 NIL
@@ -257,6 +271,26 @@ Circle -7500403 true true 8 8 285
 Circle -16777216 true false 60 75 60
 Circle -16777216 true false 180 75 60
 Polygon -16777216 true false 150 168 90 184 62 210 47 232 67 244 90 220 109 205 150 198 192 205 210 220 227 242 251 229 236 206 212 183
+
+factory
+false
+0
+Rectangle -7500403 true true 76 194 285 270
+Rectangle -7500403 true true 36 95 59 231
+Rectangle -16777216 true false 90 210 270 240
+Line -7500403 true 90 195 90 255
+Line -7500403 true 120 195 120 255
+Line -7500403 true 150 195 150 240
+Line -7500403 true 180 195 180 255
+Line -7500403 true 210 210 210 240
+Line -7500403 true 240 210 240 240
+Line -7500403 true 90 225 270 225
+Circle -1 true false 37 73 32
+Circle -1 true false 55 38 54
+Circle -1 true false 96 21 42
+Circle -1 true false 105 40 32
+Circle -1 true false 129 19 42
+Rectangle -7500403 true true 14 228 78 270
 
 fish
 false
