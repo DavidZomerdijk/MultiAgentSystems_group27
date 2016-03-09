@@ -46,6 +46,7 @@ end
 
 to execute-actions
   ask builders [
+
     if intentions = "explore world" [ explore-world self ]
   ]
 end
@@ -141,7 +142,7 @@ end
 
 to explore-world  [builder]
   ask builder [
-    if-else [pcolor] of patch-ahead 1 = costline_color
+    if-else patch-ahead 1 != nobody and [pcolor] of patch-ahead 1 = costline_color
     ;; als een agent eenmaal een costline gevonden heeft moet hij deze 'slim' verkennen
     [ ;; explore costline
       set intentions "explore costline"
