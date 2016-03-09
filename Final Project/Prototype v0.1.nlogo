@@ -39,8 +39,8 @@ end
 to update-intentions
   ask builders [
   if-else intentions = "explore world"
-  [ print "test" ]
-  [ print "test" ]
+  [ ]
+  [ ]
  ]
 end
 
@@ -155,7 +155,7 @@ end
 
 to move-random [ builder ]
   ask builder [
-    move-to one-of patches with [ not any? turtles ]
+    move-to one-of neighbors with [ not any? turtles-here ]
   ]
 end
 @#$#@#$#@
