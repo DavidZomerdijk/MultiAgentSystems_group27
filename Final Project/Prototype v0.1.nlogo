@@ -4,11 +4,11 @@
 breed [builders builder]
 breed [embankment embankment_part]
 breed [depots depot]
-globals [costline_color map_offset]
+globals [coastline_color map_offset]
 
 
 
-builders-own [belief_explored_patches belief_costline_patches beliefs_caches desires intentions builder_vision_angle]
+builders-own [belief_explored_patches belief_costline_patches beliefs_depots desires intentions builder_vision_angle]
 depots-own [ resources ]
 embankment-own [hight]
 
@@ -52,19 +52,22 @@ to execute-actions
 end
 
 to setup_globals
-  set costline_color 96
-  set map_offset 20
+  set coastline_color 96
+  set map_offset 5
 end
 
 to setup-builders
   create-builders  amount-of-workers[
     set shape "person"
     set size 7
+    set beliefs_depots [ ]
+    set belief_costline_patches [ ]
     set builder_vision_angle vision-angle
     set color blue
     set intentions "explore world"
+
     move-to one-of patches with [pcolor != 96 and pcolor != 95 and pcolor != 94 and pcolor != 93
-      and pxcor < floor (max-pxcor / 2) and not any? turtles-here and pxcor > map_offset and pycor > map_offset]
+      and pxcor < floor (max-pxcor / 2) and not any? turtles-here]
     set heading 0
   ]
 
@@ -142,21 +145,56 @@ end
 
 to explore-world  [builder]
   ask builder [
-    if-else patch-ahead 1 != nobody and [pcolor] of patch-ahead 1 = costline_color
-    ;; als een agent eenmaal een costline gevonden heeft moet hij deze 'slim' verkennen
-    [ ;; explore costline
-      set intentions "explore costline"
-    ]
-    [
-      move-random self
-    ]
+    if-else any?  patches in-cone 20 builder_vision_angle  with [ pcolor = 96 ]
+         [
+
+         let  nearest-patch min-one-of (patches with [pcolor = 96 ]  in-cone 20 builder_vision_angle)[distance myself]
+         ask  nearest-patch
+         [
+           let x  pxcor
+           let y  pycor
+           print x
+           print y
+           ask builders [
+                if (member? (list x y) belief_costline_patches) = false [
+                    set belief_costline_patches lput (list x y) belief_costline_patches
+                ]
+              ]
+
+
+         ]
+         face nearest-patch
+         fd 1
+
+        ]
+        [
+        if-else any?  depots in-cone 20 builder_vision_angle
+          [
+            ask depots in-cone 20 builder_vision_angle [
+              let x xcor
+              let y ycor
+               ask builders [
+                if (member? (list x y) beliefs_depots) = false [
+                    set beliefs_depots lput (list x y) beliefs_depots
+                ]
+              ]
+
+            ]
+            move-random self
+          ]
+          [ move-random self ]
+
+        ]
   ]
 end
 
 
 to move-random [ builder ]
   ask builder [
-    move-to one-of neighbors with [ not any? turtles-here ]
+    let new-patch one-of neighbors with [ not any? turtles-here ]
+    move-to new-patch
+    ;; the agents is looking around, every tik in a random direction
+    facexy random-pxcor random-pycor
   ]
 end
 @#$#@#$#@
@@ -243,7 +281,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-5
+16
 1
 1
 NIL
