@@ -8,7 +8,7 @@ globals [coastline_color map_offset]
 
 
 
-builders-own [belief_explored_patches belief_costline_patches beliefs_depots desires intentions builder_vision_angle]
+builders-own [belief_explored_patches belief_costline_patches beliefs_depots desires intentions builder_vision_angle belief_coast_line_complete]
 depots-own [ resources ]
 embankment-own [hight]
 
@@ -34,6 +34,11 @@ to update-desires
 end
 
 to update-beliefs
+  ask builders [
+    if length belief_costline_patches >=  (max-pycor * 2) - 1
+    [
+      print ""
+      set belief_coast_line_complete true ]]
 end
 
 to update-intentions
@@ -58,6 +63,7 @@ end
 
 to setup-builders
   create-builders  amount-of-workers[
+    set belief_coast_line_complete false
     set shape "person"
     set size 7
     set beliefs_depots [ ]
@@ -139,13 +145,11 @@ end
 to explore_costline
 end
 
-to explore_world
-  ;; random moves to explore the world
-end
+
 
 to explore-world  [builder]
   ask builder [
-    if-else any?  patches in-cone 20 builder_vision_angle  with [ pcolor = 96 ]
+    if-else any?  patches in-cone 20 builder_vision_angle  with [ pcolor = 96 ] and not belief_coast_line_complete
          [
 
          let  nearest-patch min-one-of (patches with [pcolor = 96 ]  in-cone 20 builder_vision_angle)[distance myself]
@@ -159,6 +163,7 @@ to explore-world  [builder]
                 if (member? (list x y) belief_costline_patches) = false [
                     set belief_costline_patches lput (list x y) belief_costline_patches
                 ]
+
               ]
 
 
