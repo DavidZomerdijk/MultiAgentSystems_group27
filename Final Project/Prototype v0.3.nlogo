@@ -1,3 +1,19 @@
+; TODO:
+; We zijn bijna bij een basic working version.
+;
+; De volgende fouten moeten er nog uit.
+; Als een builder een stuk kust selecteerd om een dijk aan te gaan bouwen, dan moet deze patch uit de lijst belief_costline_patches verwijderd worden van alle agents zodat andere deze patch niet kunnen selecter. De code hiervoor is er en het werkt. Alleen ergens (maar ik
+; kan niet vinden waar ) wordt deze patch weer teruggezet. Als dit eruit is zou het moeten werken.
+; stop als de hele dijk af is
+; zorg ervoor dat het om een of andere reden aantrekkelijk wordt om naar verder gelegen depots te gaan. Niet alleen naar de voorste. Geef ieder depot een aantal resources bv. 100 als deze op zijn moeten ze naar een ander depot.
+; zorg dat agents meerdere blokken op elkaar moeten zetten
+
+
+; dit is een algemene todo - maar voor later - we moeten wat hardcoded dingen eruit halen en een betere visualisatie maken
+
+extensions [array table]
+
+
 breed [builders builder]
 breed [embankment embankment_part]
 breed [depots depot]
@@ -27,11 +43,15 @@ builders-own [ belief_explored_patches
   observations
   belief_coast_line_complete
   new_shoreline_patches
+  choosen_shortline
+  working_on_coastline
   just_found_shoreline
   msg_out_b_depots
+  msg_out_b_selected_coastline_part
   msg_out_b_shoreline
   msg_in_b_depots
   msg_in_b_shoreline
+  msg_in_b_selected_coastline_part
   belief_carrying_resources ]
 depots-own [ resources ]
 embankment-own [ hight ]
@@ -63,6 +83,7 @@ to setup-builders
     ;deze kunnen we later weer aanzetten, maar voor visualisatie van de gaze is de default handiger :)
     ; set shape "person"
     set size 4
+    set choosen_shortline []
     set beliefs_depots [ ]
     set belief_costline_patches [ ]
     set builder_vision_angle vision-angle
@@ -70,6 +91,7 @@ to setup-builders
     set desires ["find depots and shoreline"]
     set intentions ["explore world"]
     set msg_in_b_depots []
+    set msg_in_b_selected_coastline_part []
     set msg_in_b_shoreline []
     set just_found_shoreline false
     set belief_carrying_resources 0
@@ -279,16 +301,29 @@ to update-intentions
   if item 0 desires = "build embankment" [
     if-else belief_carrying_resources = 0
     [
-      set intentions remove item 0 intentions intentions
-      set intentions lput "find closest depot" intentions
+      if-else any? other depots-here       [
+        set intentions remove item 0 intentions intentions
+        set intentions lput "pick up resources" intentions
+      ]
+      [
+        set intentions remove item 0 intentions intentions
+        set intentions lput "find closest depot" intentions
+      ]
     ]
     [
+      if-else patch-ahead 1 != nobody and [pcolor = coastline_color] of patch-ahead 1
+      [
 
+        set intentions remove item 0 intentions intentions
+        set intentions lput "build embankment" intentions
+
+      ]
+      [
+        set intentions remove item 0 intentions intentions
+        set intentions lput "find building spot" intentions
+      ]
     ]
-    ; als het aantal resources dat je zoekt 0 is ga naar de dichtbijzijnde depot.
-    ; als je een resource hebt, ga naar de dichtbijzijnde dijk waar niet aan gewerkt wordt
-    ; als je daar bent, bouw de dijk
-    ]
+  ]
  ]
 end
 
@@ -300,24 +335,42 @@ to execute-actions
       if item 0 intentions = "move along shoreline" [ move-along-shoreline-v1 self ]
     ]
     [
-      if-else item 0 intentions = "find closest depot" [
+      if item 0 intentions = "find closest depot" [
         let closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
         face closest-depot
         fd 1
       ]
-      []
-    ]
+      if item 0 intentions = "pick up resources" [ set belief_carrying_resources 10 ]
+      if item 0 intentions = "find building spot" [
+        let closest-coastline item 0 sort-by [ distance ?1 < distance ?2 ] belief_costline_patches
 
-  ]
+        let x [pxcor] of closest-coastline
+        let y [pycor] of closest-coastline
+        set choosen_shortline lput (closest-coastline) choosen_shortline
+        set working_on_coastline closest-coastline
+        face closest-coastline
+
+        fd 1
+        ; send messages to other agents to that they selected this patch so that they don't select that one anymore
+
+      ]
+      if item 0 intentions = "build embankment" [
+         set belief_carrying_resources 0
+         ask patch-ahead 1 [
+             set pcolor red
+         ]
+
+
+      ]
+    ]
+]
 end
 
 ; try to move to shoreline, choose the costline patch that is closest for you
 ; could be improved because could be that suddently all builders head to the same location...for later if we have time
 to move-to-shoreline [ bd ]
-
   face item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] belief_costline_patches
   fd 1
-
 end
 
 ; simpel first version
@@ -358,8 +411,7 @@ to explore-world  [builder]
          [
            let x  pxcor
            let y  pycor
-           print x
-           print y
+
            ask builders [
                 if (member? (list x y) belief_costline_patches) = false [
                     ; set belief_costline_patches lput (list x y) belief_costline_patches
@@ -430,14 +482,20 @@ to send-messages [ bd ]
   ;(re)initialize outgoing messages to what you just observed
   set msg_out_b_depots []
   set msg_out_b_shoreline []
+  set msg_out_b_selected_coastline_part []
   set msg_out_b_depots [ self ] of observations with [ any? depots-here ]
   set msg_out_b_shoreline [ self ] of observations with [ pcolor = coastline_color ]
+  set msg_out_b_selected_coastline_part choosen_shortline
+  ;set msg_out_b_selected_coast_line_part [ self ]
   ; combine your observations with the incoming message queue of OTHER builders
   if length msg_out_b_depots > 0 [
     ask other builders [ set msg_in_b_depots remove-duplicates sentence msg_in_b_depots [msg_out_b_depots] of bd ]
   ]
   if length msg_out_b_shoreline > 0 [
     ask other builders [ set msg_in_b_shoreline remove-duplicates sentence msg_in_b_shoreline [ msg_out_b_shoreline ] of bd ]
+  ]
+  if  length msg_out_b_selected_coastline_part > 0 [
+    ask other builders [ set msg_in_b_selected_coastline_part remove-duplicates sentence msg_in_b_selected_coastline_part [ msg_out_b_selected_coastline_part ] of bd ]
   ]
 
 end
@@ -454,6 +512,17 @@ ask builders [
     set belief_costline_patches remove-duplicates sentence belief_costline_patches msg_in_b_shoreline
   ]
 
+  if length msg_in_b_selected_coastline_part > 0 [
+    let coordinates item 0 msg_in_b_selected_coastline_part
+    let index 0
+    foreach belief_costline_patches [
+       let temp_element ?
+       if  temp_element = coordinates [
+         set belief_costline_patches remove-item index belief_costline_patches
+       ]
+       set index index + 1
+    ]
+  ]
 ]
 end
 
