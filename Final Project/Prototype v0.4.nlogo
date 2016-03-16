@@ -42,7 +42,7 @@ builders-own [ belief_explored_patches
   msg_in_b_shoreline
   msg_in_b_selected_coastline_part
   belief_carrying_resources
-  belief_working_only
+  belief_working_alone
 
   ]
 depots-own [ resources ]
@@ -66,10 +66,12 @@ end
 ; initialize the builders
 to setup-builders
 
+  ; set globals
   set speed_carry_alone 0.2
   set speed_carry_together 0.7
   set speed_w_carry 1
   set visualize_vision false
+
   create-builders  amount-of-workers[
     set belief_coast_line_complete false
     set belief_all_depots_found false
@@ -88,13 +90,13 @@ to setup-builders
     set msg_in_b_shoreline []
     set just_found_shoreline false
     set belief_carrying_resources 0
-    set belief_working_only true
+    set belief_working_alone true
 
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? turtles-here ]
     set heading random 360
     ; yeay
-    if visualize_vision [ draw-vac-antennas self ]
+    if visualize_vision [ draw-bd-antennas self ]
   ]
 
 end
@@ -181,7 +183,7 @@ to go
   update-intentions
   ; Note, currently we stop the simulation if the world is fully explored, NEEDS TO BE CHANGED WHEN DEALING WITH PART II
 
-  if visualize_vision [ ask builders [ draw-vac-antennas self ] ]
+  if visualize_vision [ ask builders [ draw-bd-antennas self ] ]
   execute-actions
   tick
 end
@@ -303,13 +305,18 @@ to update-intentions
         set intentions lput "pick up resources" intentions
       ]
       [
-        ;find closest depot if you do not have resources
+        ; we are not carrying anything and we're not at a depot
+        ; need to decide what to do.
+        ; (1) search for closest depot to pick up construction material or
+        ; (2) find a budy that we can help carrying the material
         set mybodies []
-        set mybodies find-bodies self
+        set mybodies find-budies self
         ; are there bodies around I could help?
         if length mybodies > 0 [
-          if work-with-body? self item 0 mybodies []
+          if work-with-budy? self item 0 mybodies [ print "****** WORK WITH BUDY!!!!! ****** "]
         ]
+
+        ;find closest depot if you do not have resources
         set intentions remove item 0 intentions intentions
         set intentions lput "find closest depot" intentions
       ]
@@ -365,7 +372,7 @@ to execute-actions
           face closest-coastline
 
           ;  send messages to other agents to that they selected this patch so that they don't select that one anymore
-          ifelse belief_working_only [
+          ifelse belief_working_alone [
             fd speed_carry_alone
           ]
           [
@@ -378,7 +385,7 @@ to execute-actions
       ]
       if item 0 intentions = "go to building spot" [
         face item 0 choosen_shortline
-        ifelse belief_working_only [
+        ifelse belief_working_alone [
           fd speed_carry_alone
         ]
         [
@@ -557,7 +564,7 @@ end
 
 
 ; visualize vision radius
-to draw-vac-antennas [ bd ]
+to draw-bd-antennas [ bd ]
 
   ; update my radius (needed for the antennas)
 
@@ -573,23 +580,55 @@ to draw-vac-antennas [ bd ]
   display
 end
 
-to-report find-bodies [ bd ]
+to-report find-budies [ bd ]
 
-  let potential_bodies builders_nearby with [ belief_working_only = true and belief_carrying_resources > 0 ]
+  let potential_budies builders_nearby with [ belief_working_alone = true and belief_carrying_resources > 0 and length choosen_shortline > 0 ]
 
-  report sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] potential_bodies
-  ; this list of builders needs to be filtered on a "minimal threshold"
+  let final_budy_list []
+  foreach [self] of potential_budies [
+     let patch_budy [ patch-here ] of ?
+     ; is distance form me to budy greater than certain threshold, otherwise I am not allowed to coorporate with hem/her
+     if  distance-nowrap patch_budy > coorperation_threshold [
+       set final_budy_list fput ? final_budy_list
+     ]
+   ] ; end foreach
+   report sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] final_budy_list
 
 end
 
-to-report work-with-body? [ bd budy ]
-  let x_cor_budy [xcor] of budy
-  let y_cor_budy [ycor] of budy
-  let dist_to_budy distance-nowrap patch x_cor_budy y_cor_budy
+to-report work-with-budy? [ bd budy ]
 
+  print budy
+  ; get patch where budy is situated
+  let patch_budy [patch-here] of budy
+  let shore_line_patch [ item 0 choosen_shortline ] of budy
+  ; compute distance between "me" and budy
+  let dist_to_budy distance-nowrap patch_budy
+  ; compute distance between budy and shoreline
+  let dist_budy_to_shoreline [ distance-nowrap patch_budy ] of shore_line_patch
+  ; total distance before I would "get my next reward" if I would help budy
+  ; NOTE: because the distance to the shoreline will be travelled in "speed" speed_carry_together,
+  ; we use the invers of that factor (because it's < 1) to calc the total distance from budy to shoreline
+  let total_dist_with_budy ( dist_to_budy + ( ( 1 / speed_carry_together) * dist_budy_to_shoreline ) )
 
-  print d_body_coast
-  report false
+  ; now calculate the distance if I would pick-up a patch at the nearest depot and then go to the shoreline
+  ; the last part is an approximation
+  let closest-coastline item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] belief_costline_patches
+  let closest-depot item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs_depots
+  ; ok, my distance to closest depot
+  let dist_to_depot distance-nowrap closest-depot
+  let dist_depot_to_shoreline [ distance-nowrap closest-depot ] of closest-coastline
+  let total_dist_alone ( dist_to_depot + ( ( 1 / speed_carry_alone) * dist_depot_to_shoreline) )
+
+  ifelse total_dist_alone > total_dist_with_budy [
+    ; YES, work together with budy
+      print (word total_dist_alone " > "  total_dist_with_budy)
+      report true
+  ]
+  [
+    ; NO, just work alone, you're better off
+    report false
+  ]
 
 end
 @#$#@#$#@
@@ -676,7 +715,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-2
+3
 1
 1
 NIL
@@ -822,6 +861,21 @@ NIL
 17
 1
 11
+
+SLIDER
+186
+61
+365
+94
+coorperation_threshold
+coorperation_threshold
+0
+100
+20
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
