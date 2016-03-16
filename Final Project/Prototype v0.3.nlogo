@@ -53,7 +53,6 @@ end
 
 to setup_globals
   set time 0
-  set map_offset 5
 end
 
 ; initialize the builders
@@ -289,28 +288,32 @@ to update-intentions
         set intentions lput "pick up resources" intentions
       ]
       [
-        ;find closest depot
+        ;find closest depot if you do not have resources
         set intentions remove item 0 intentions intentions
         set intentions lput "find closest depot" intentions
       ]
     ]
     [
+      ; you have resources at the moment
       if-else patch-ahead 1 != nobody and [pcolor = coastline_color] of patch-ahead 1
       [
-
+        ;find you are arrived at the coastline where you want to build
         set intentions remove item 0 intentions intentions
         set intentions lput "build embankment" intentions
 
       ]
       [
+        ; you have resources but you are not arrived yet
         if-else length choosen_shortline > 0
         [
-        set intentions remove item 0 intentions intentions
-        set intentions lput "go to building spot" intentions
+          ; if you have chooses a building spot go there
+          set intentions remove item 0 intentions intentions
+          set intentions lput "go to building spot" intentions
         ]
         [
-        set intentions remove item 0 intentions intentions
-        set intentions lput "find building spot" intentions
+          ; select a building spot
+          set intentions remove item 0 intentions intentions
+          set intentions lput "find building spot" intentions
         ]
       ]
     ]
@@ -333,14 +336,18 @@ to execute-actions
       ]
       if item 0 intentions = "pick up resources" [ set belief_carrying_resources 10 ]
       if item 0 intentions = "find building spot" [
-        let closest-coastline item 0 sort-by [ distance ?1 < distance ?2 ] belief_costline_patches
-        set choosen_shortline []
-        set choosen_shortline lput closest-coastline choosen_shortline
-        set working_on_coastline closest-coastline
-        face closest-coastline
+        if length belief_costline_patches > 0 [
+          let closest-coastline item 0 sort-by [ distance ?1 < distance ?2 ] belief_costline_patches
+          set choosen_shortline []
+          set choosen_shortline lput closest-coastline choosen_shortline
+          set working_on_coastline closest-coastline
+          face closest-coastline
 
-        fd 1
-        ; send messages to other agents to that they selected this patch so that they don't select that one anymore
+          ;  send messages to other agents to that they selected this patch so that they don't select that one anymore
+          fd 1
+        ]
+
+
 
       ]
       if item 0 intentions = "go to building spot" [
@@ -394,102 +401,12 @@ to move-along-shoreline-v1 [ bd ]
 
 end
 
-
-to explore-world  [builder]
-  ask builder [
-    if-else any?  patches in-cone 20 builder_vision_angle  with [ pcolor = coastline_color ] and not belief_coast_line_complete
-         [
-
-         let  nearest-patch min-one-of (patches with [pcolor = coastline_color ]  in-cone 20 builder_vision_angle)[distance myself]
-         ask  nearest-patch
-         [
-           let x  pxcor
-           let y  pycor
-
-           ask builders [
-                if (member? (list x y) belief_costline_patches) = false [
-                    ; set belief_costline_patches lput (list x y) belief_costline_patches
-                ]
-
-              ]
-
-
-         ]
-         face nearest-patch
-         fd 1
-
-        ]
-        [
-        if-else any?  depots in-cone 20 builder_vision_angle
-          [
-            ask depots in-cone 20 builder_vision_angle [
-              let x xcor
-              let y ycor
-               ask builders [
-                if (member? (list x y) beliefs_depots) = false [
-                    ;set beliefs_depots lput (list x y) beliefs_depots
-                ]
-              ]
-
-            ]
-            move-random self
-          ]
-          [ move-random self ]
-
-        ]
-  ]
-end
-
-
-;this function makes the agent move random, however, the agent will only change direction if it cannot go any further.
 to move-random [ builder ]
   ask builder [
-
-    let target_patch patch-ahead 1
-    let obstacle true
-
-    while[obstacle] [
-    set target_patch patch-ahead 1
-    if target_patch != nobody
-          [face target_patch ]
-
-    ifelse target_patch != nobody and not any? turtles-on target_patch and [pcolor] of target_patch != coastline_color
-          [
-          set obstacle false
-          move-to target_patch
-
-          ]
-
-        [ ;here we determine which direction the agent needs to move
-          let random_dir random 1
-          ;with this variable we can determine wether an agent heads left or right x degrees.
-          let random_dir2 1
-          if random_dir = 1 [ set random_dir2 -1]
-
-          ;if on bumps on the northern side of the grid one the basis of the direction move x degrees to left or right
-          ifelse ycor + 1 > max-pycor
-            [ifelse  heading < 91
-              [ set heading heading + 90 + random 50 ]
-              [ set heading heading  - 90 - random 50]
-            ]
-          ;if on bumps on the southern side of the grid one the basis of the direction move x degrees to left or right
-          [ ifelse ycor - 1 < min-pycor
-            [ifelse heading > 360
-              [ set heading heading + 90 + random 50]
-              [ set heading heading - 90 - random 50]
-            ]
-
-          [ifelse xcor - 1 < min-pxcor
-            [ ifelse heading > 270
-              [ set heading heading + 90 + random 50 ]
-              [ set heading heading - 90 - random 50]
-            ]
-            [set heading heading + random_dir2 * 90 + random_dir2 * random 50 ]
-            ]
-          ]
-        ]
-    ]
-
+    let new-patch one-of neighbors with [ not any? builders-here  and not any? depots-here and pcolor != coastline_color ]
+    move-to new-patch
+    ;; the agents is looking around, every tik in a random direction
+    facexy random-pxcor random-pycor
     if visualize_vision [ ask [ antennas ] of builder [ die ] ]
   ]
 end
@@ -545,7 +462,6 @@ end
 
 ; --- Send messages ---
 to read-messages
-  ;;print "messages"
 ;combine builders belief with beliefs send by other builders
 ask builders [
   if length msg_in_b_depots > 0  [
@@ -554,7 +470,9 @@ ask builders [
   if length msg_in_b_shoreline > 0 [
     set belief_costline_patches remove-duplicates sentence belief_costline_patches msg_in_b_shoreline
   ]
+  ; recieved message from other agent about building at coastline
   if length msg_in_b_selected_coastline_part > 0 [
+    ; for all incomming messeges remove them from beliefs
     foreach msg_in_b_selected_coastline_part [
 
     let coordinates ?
@@ -563,15 +481,13 @@ ask builders [
     foreach belief_costline_patches [
        let temp_element ?
        if  temp_element = coordinates [
-
          set belief_costline_patches remove-item index belief_costline_patches
-
        ]
        set index index + 1
     ]
-
   ]
-]]
+ ]
+]
 end
 
 ; determine whether I am at the shoreline, returning true/false
