@@ -58,6 +58,7 @@ embankment-own [ hight ]
 
 
 to setup
+  print "8934789347823823890239802398023980239802398039083298023908398032980"
   setup_globals
   clear-all
   setup-coastline
@@ -217,9 +218,11 @@ to update-beliefs
     ; determine if we just observed a patch at the shoreline, we'll use that information in order to determine
     ; where to "go next"
     ifelse length new_shoreline_patches > 0 [ set just_found_shoreline true ] [ set just_found_shoreline false ]
-
-    set belief_costline_patches remove-duplicates sentence belief_costline_patches new_shoreline_patches
+    if not belief_coast_line_complete [
+      set belief_costline_patches remove-duplicates sentence belief_costline_patches new_shoreline_patches
+    ]
     ; send your observations to the other agents
+    print "send"
     send-messages self
   ]
   ; read messages in order to "synchronize" own beliefs with others
@@ -346,6 +349,7 @@ to execute-actions
 
         let x [pxcor] of closest-coastline
         let y [pycor] of closest-coastline
+        set choosen_shortline []
         set choosen_shortline lput (closest-coastline) choosen_shortline
         set working_on_coastline closest-coastline
         face closest-coastline
@@ -491,11 +495,16 @@ to send-messages [ bd ]
   if length msg_out_b_depots > 0 [
     ask other builders [ set msg_in_b_depots remove-duplicates sentence msg_in_b_depots [msg_out_b_depots] of bd ]
   ]
-  if length msg_out_b_shoreline > 0 [
-    ask other builders [ set msg_in_b_shoreline remove-duplicates sentence msg_in_b_shoreline [ msg_out_b_shoreline ] of bd ]
+  if-else not belief_coast_line_complete [
+    if length msg_out_b_shoreline > 0 [
+      ask other builders [ set msg_in_b_shoreline remove-duplicates sentence msg_in_b_shoreline [ msg_out_b_shoreline ] of bd ]
+    ]
+  ]
+  [
+    ask other builders [ set msg_in_b_shoreline []]
   ]
   if  length msg_out_b_selected_coastline_part > 0 [
-    ask other builders [ set msg_in_b_selected_coastline_part remove-duplicates sentence msg_in_b_selected_coastline_part [ msg_out_b_selected_coastline_part ] of bd ]
+    ask builders [ set msg_in_b_selected_coastline_part remove-duplicates sentence msg_in_b_selected_coastline_part [ msg_out_b_selected_coastline_part ] of bd ]
   ]
 
 end
@@ -515,13 +524,21 @@ ask builders [
   if length msg_in_b_selected_coastline_part > 0 [
     let coordinates item 0 msg_in_b_selected_coastline_part
     let index 0
+
     foreach belief_costline_patches [
        let temp_element ?
        if  temp_element = coordinates [
+         print "xxxxxxxxxxx"
+         print coordinates
+         print item index belief_costline_patches
+         print length belief_costline_patches
          set belief_costline_patches remove-item index belief_costline_patches
+         print length belief_costline_patches
+         print "xxxxxxxxxxx"
        ]
        set index index + 1
     ]
+
   ]
 ]
 end
