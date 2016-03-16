@@ -582,9 +582,12 @@ to-report find-bodies [ bd ]
 
 end
 
-to-report work-with-body? [ bd body ]
+to-report work-with-body? [ bd budy ]
+  let x_cor_budy [xcor] of budy
+  let y_cor_budy [ycor] of budy
+  let dist_to_budy distance-nowrap patch x_cor_budy y_cor_budy
 
-  let d_body_coast distance-nowrap [ item 0 choosen_shortline ] of body
+
   print d_body_coast
   report false
 
