@@ -78,8 +78,8 @@ to setup-builders
     set belief_carrying_resources 0
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? turtles-here ]
-    set heading 0
-
+    set heading random 360
+    ; yeay
     if visualize_vision [ draw-vac-antennas self ]
   ]
 
@@ -401,31 +401,57 @@ to move-along-shoreline-v1 [ bd ]
 
 end
 
+;this function makes the agent move random, however, the agent will only change direction if it cannot go any further.
 to move-random [ builder ]
   ask builder [
-    let new-patch one-of neighbors with [ not any? builders-here  and not any? depots-here and pcolor != coastline_color ]
-    move-to new-patch
-    ;; the agents is looking around, every tik in a random direction
-    facexy random-pxcor random-pycor
+
+    let target_patch patch-ahead 1
+    let obstacle true
+
+    while[obstacle] [
+    set target_patch patch-ahead 1
+    if target_patch != nobody
+          [face target_patch ]
+
+    ifelse target_patch != nobody and not any? turtles-on target_patch and [pcolor] of target_patch != coastline_color
+          [
+          set obstacle false
+          move-to target_patch
+
+          ]
+
+        [ ;here we determine which direction the agent needs to move
+          let random_dir random 1
+          ;with this variable we can determine wether an agent heads left or right x degrees.
+          let random_dir2 1
+          if random_dir = 1 [ set random_dir2 -1]
+
+          ;if on bumps on the northern side of the grid one the basis of the direction move x degrees to left or right
+          ifelse ycor + 1 > max-pycor
+            [ifelse  heading < 91
+              [ set heading heading + 90 + random 50 ]
+              [ set heading heading  - 90 - random 50]
+            ]
+          ;if on bumps on the southern side of the grid one the basis of the direction move x degrees to left or right
+          [ ifelse ycor - 1 < min-pycor
+            [ifelse heading > 360
+              [ set heading heading + 90 + random 50]
+              [ set heading heading - 90 - random 50]
+            ]
+
+          [ifelse xcor - 1 < min-pxcor
+            [ ifelse heading > 270
+              [ set heading heading + 90 + random 50 ]
+              [ set heading heading - 90 - random 50]
+            ]
+            [set heading heading + random_dir2 * 90 + random_dir2 * random 50 ]
+            ]
+          ]
+        ]
+    ]
+
     if visualize_vision [ ask [ antennas ] of builder [ die ] ]
   ]
-end
-
-; visualize vision radius
-to draw-vac-antennas [ bd ]
-
-  ; update my radius (needed for the antennas)
-
-  ask myradius [
-    sprout-antennas 1 [
-    set shape "dot"
-    set size 0.3
-    set color [color] of bd
-    create-antenna-link-with bd
-    set color [color] of bd
-    ]
-  ]
-  display
 end
 
 ; --- Send messages ---
@@ -496,6 +522,24 @@ to-report atShoreline [ bd ]
   [ report true ]
   [ report false ]
 
+end
+
+
+; visualize vision radius
+to draw-vac-antennas [ bd ]
+
+  ; update my radius (needed for the antennas)
+
+  ask myradius [
+    sprout-antennas 1 [
+    set shape "dot"
+    set size 0.3
+    set color [color] of bd
+    create-antenna-link-with bd
+    set color [color] of bd
+    ]
+  ]
+  display
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -581,7 +625,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-4
+17
 1
 1
 NIL
