@@ -98,7 +98,7 @@ to setup-builders
     set just_found_shoreline false
     set belief_carrying_resources 0
     set belief_working_alone true
-    set found_empty_depot true
+    set found_empty_depot false
 
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? turtles-here ]
@@ -219,7 +219,9 @@ to update-beliefs
 
   ask builders [
     ; update beliefs based on observations
-    set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
+    if not belief_all_depots_found [
+      set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
+    ]
     set new_shoreline_patches [] ; first empty the previous list with shortline patches
     set new_shoreline_patches [ self ] of observations with [ pcolor = coastline_color ]
     ; determine if we just observed a patch at the shoreline, we'll use that information in order to determine
@@ -230,6 +232,14 @@ to update-beliefs
     ]
     ; send your observations to the other agents
     send-messages self
+    ; ******** ADDED CODE*******
+    ; verwijder depot uit lijst als je merkt dat die leeg is
+    if found_empty_depot [
+      print beliefs_depots
+      let sorted_depots sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs_depots
+      set beliefs_depots remove-item 1 sorted_depots
+      set found_empty_depot false
+    ]
   ]
   ; read messages in order to "synchronize" own beliefs with others
   read-messages
@@ -307,8 +317,9 @@ to update-intentions
     if-else belief_carrying_resources = 0
     [
       ; here the agent does not have any resources, it needs to get one at the depot
-      if-else any? other depots-here [
-        ; when arrived at the depot, pick up resources
+      ;let amount_of_resources [resources] of other depots-here
+      if-else any? other depots-here and not found_empty_depot [
+        ; when arrived at the depot, pick up resources and only if there are resources left
         set intentions remove item 0 intentions intentions
         set intentions lput "pick up resources" intentions
       ]
@@ -374,14 +385,20 @@ to execute-actions
       ]
       if item 0 intentions = "pick up resources" [
         ; check the amount of resources for this depot
+        ; ****** ADDED CODE *********
+        ; als er niet genoeg resources zijn zeg found_empty_depot true
         let resources_left [resources] of other depots-here
-        if item 0  resources_left >= 10 [
+        if-else item 0  resources_left >= 10 [
           ; if there are enought resources left
           set belief_carrying_resources 10
           ask other depots-here [
             set resources resources - 10
             set plabel resources
           ]
+        ]
+        [
+         set found_empty_depot true
+
         ]
       ]
       if item 0 intentions = "find building spot" [
@@ -549,7 +566,7 @@ end
 to read-messages
 ;combine builders belief with beliefs send by other builders
 ask builders [
-  if length msg_in_b_depots > 0  [
+  if length msg_in_b_depots > 0  and not belief_all_depots_found[
     set beliefs_depots remove-duplicates sentence beliefs_depots msg_in_b_depots
   ]
   if length msg_in_b_shoreline > 0 [
@@ -764,7 +781,7 @@ resources-per-depot
 resources-per-depot
 0
 100
-50
+100
 1
 1
 NIL
