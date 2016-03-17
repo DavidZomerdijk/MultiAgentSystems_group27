@@ -1,7 +1,20 @@
+
+
+
+; TODO's :
+; (1):We variously use shortline coastline and coast_line, we need one word for that
+; (2) Stop when done, or do some final things like David suggested
+; (3) use budy's instead of bodies!
+; (4) make sure that other depots get some attractiveness, not always the closest one
+
+; THIS WE MAY NEED, IF NO => DELETE IT FOR THE FINAL VERSION
 extensions [array table]
+
+
 breed [builders builder]
-breed [embankment embankment_part]
+breed [embankment embankment_part] ; WE DO NOT USE THIS ONE ATM, IF WE ADD HIGHT. THEN WE NEED THIS ONE
 breed [depots depot]
+
 ;; for development
 breed [antennas antenna ]
 undirected-link-breed [antenna-links antenna-link]
@@ -12,14 +25,14 @@ globals [visualize_vision
          sea_color ; color of the sea
          terrain-color ; color of the terrein where agent can walk...sand
          total_num_shore_patches
-         speed_carry_alone
-         speed_carry_together
-         speed_w_carry
+         speed_carry_alone ; speed of the agent when walking alone
+         speed_carry_together ; speed of the agents when carrying an object togtehter
+         speed_w_carry ; speed without carrying something
         ]
 
 
 
-builders-own [ belief_explored_patches
+builders-own [
   belief_costline_patches
   beliefs_depots
   belief_all_depots_found
@@ -32,7 +45,7 @@ builders-own [ belief_explored_patches
   mybodies
   belief_coast_line_complete
   new_shoreline_patches
-  choosen_shortline
+  choosen_shortline ; this part of the shortline the agent has choosen to work on
   working_on_coastline
   just_found_shoreline
   msg_out_b_depots
@@ -43,24 +56,20 @@ builders-own [ belief_explored_patches
   msg_in_b_selected_coastline_part
   belief_carrying_resources
   belief_working_alone
+  found_empty_depot ; true if you found a depot that is true
+]
 
-  ]
 depots-own [ resources ]
 embankment-own [ hight ]
 
-
 to setup
-  setup_globals
+  set time 0
   clear-all
   setup-coastline
   setup-depots
   setup-builders
   reset-ticks
   reset-timer
-end
-
-to setup_globals
-  set time 0
 end
 
 ; initialize the builders
@@ -72,11 +81,9 @@ to setup-builders
   set speed_w_carry 1
   set visualize_vision false
 
-  create-builders  amount-of-workers[
+  create-builders  amount-of-workers [
     set belief_coast_line_complete false
     set belief_all_depots_found false
-    ; Deze kunnen we later weer aanzetten, maar voor visualisatie van de gaze is de default handiger :)
-    ; set shape "person"
     set size 4
     set choosen_shortline []
     set beliefs_depots []
@@ -91,26 +98,30 @@ to setup-builders
     set just_found_shoreline false
     set belief_carrying_resources 0
     set belief_working_alone true
+    set found_empty_depot true
 
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? turtles-here ]
     set heading random 360
-    ; yeay
     if visualize_vision [ draw-bd-antennas self ]
   ]
 
 end
+
 ; initialize the depots
 to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
     set color red
     set size 7
+
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? depots-here ]
     set heading 0
+    set plabel resources
   ]
+
 end
 
 ;; set up the basic environment with the coastline
@@ -209,12 +220,12 @@ to update-beliefs
   ask builders [
     ; update beliefs based on observations
     set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
-    set new_shoreline_patches []
+    set new_shoreline_patches [] ; first empty the previous list with shortline patches
     set new_shoreline_patches [ self ] of observations with [ pcolor = coastline_color ]
     ; determine if we just observed a patch at the shoreline, we'll use that information in order to determine
     ; where to "go next"
     ifelse length new_shoreline_patches > 0 [ set just_found_shoreline true ] [ set just_found_shoreline false ]
-    if not belief_coast_line_complete [
+    if not belief_coast_line_complete [ ; only update beliefs about the coastline is belief about is not complete
       set belief_costline_patches remove-duplicates sentence belief_costline_patches new_shoreline_patches
     ]
     ; send your observations to the other agents
@@ -223,7 +234,7 @@ to update-beliefs
   ; read messages in order to "synchronize" own beliefs with others
   read-messages
 
-  ask builders [
+  ask builders [ ; update beleifs if we found all the depots and coastline patches
     if length belief_costline_patches >= total_num_shore_patches
     [
       set belief_coast_line_complete true
@@ -249,36 +260,34 @@ end
 ; update intentions of the builder
 to update-intentions
   ask builders [
-  if item 0 desires = "find depots and shoreline" [
-  ; so we know we haven't yet found all depots and the complete shoreline
-    ifelse just_found_shoreline and not belief_coast_line_complete [
-      ; I just found a shoreline patch but am I already at the shoreline?
-      ; the first simple goal is then to go to shoreline and move along shoreline
-      ifelse atShoreline self [
-         ; agent is already at the shoreline, so move along the shoreline
+    if item 0 desires = "find depots and shoreline" [
+      ; so we know we haven't yet found all depots and the complete shoreline
+      ifelse just_found_shoreline and not belief_coast_line_complete [
+        ; I just found a shoreline patch but am I already at the shoreline?
+        ; the first simple goal is then to go to shoreline and move along shoreline
+        ifelse atShoreline self [
+          ; agent is already at the shoreline, so move along the shoreline
+          set intentions remove item 0 intentions intentions
+          set intentions lput "move along shoreline" intentions
+          set just_found_shoreline false
+       ]
+       [
+         ; agent is not yet at the shoreline, so first move to the shoreline
          set intentions remove item 0 intentions intentions
-         set intentions lput "move along shoreline" intentions
-         set just_found_shoreline false
-      ]
+         set intentions lput "move to shoreline" intentions
+       ]
+      ] ; end if just_found_shoreline
       [
-        ; agent is not yet at the shoreline, so first move to the shoreline
-        set intentions remove item 0 intentions intentions
-        set intentions lput "move to shoreline" intentions
-      ]
-
-    ] ; end if just_found_shoreline
-    [
-      ; else if just_found_shoreline
-      ; if at shoreline and we haven't discoverd it fully yet, then keep on moving along shoreline
-      ifelse Not belief_coast_line_complete and atShoreline self [
-
-         set intentions remove item 0 intentions intentions
-         set intentions lput "move along shoreline" intentions
-      ]
-      [
+        ; else if just_found_shoreline
+        ; if at shoreline and we haven't discoverd it fully yet, then keep on moving along shoreline
+        ifelse not belief_coast_line_complete and atShoreline self [
+          set intentions remove item 0 intentions intentions
+          set intentions lput "move along shoreline" intentions
+        ]
+        [
          ; if you're not at the coastline yet but all depots have been found but not the complete shoreline
          ; AND we already found at least a piece of shoreline then move to shoreline
-         ifelse Not belief_coast_line_complete and belief_all_depots_found and length belief_costline_patches > 0 [
+         ifelse not belief_coast_line_complete and belief_all_depots_found and length belief_costline_patches > 0 [
             ; we already checked whether we're at the shoreline, not the case if we end up here
             set intentions remove item 0 intentions intentions
             set intentions lput "move to shoreline" intentions
@@ -289,16 +298,15 @@ to update-intentions
            set intentions remove item 0 intentions intentions
            set intentions lput "explore world" intentions
          ]
-      ]
-
-    ]  ; end ifelse just_found_shoreline
-
-  ] ; end-if desires = "find depots and shoreline"
+        ]
+      ]  ; end ifelse just_found_shoreline
+    ] ; end-if desires = "find depots and shoreline"
   ; deduce intentions when desire is to build the embankment...the 2nd phase
   if item 0 desires = "build embankment" [
     ; if the agent is not carrying any resources, go to a depot to get resources
     if-else belief_carrying_resources = 0
     [
+      ; here the agent does not have any resources, it needs to get one at the depot
       if-else any? other depots-here [
         ; when arrived at the depot, pick up resources
         set intentions remove item 0 intentions intentions
@@ -313,7 +321,9 @@ to update-intentions
         set mybodies find-budies self
         ; are there bodies around I could help?
         if length mybodies > 0 [
-          if work-with-budy? self item 0 mybodies [ print "****** WORK WITH BUDY!!!!! ****** "]
+          if-else work-with-budy? self item 0 mybodies
+          [ print "****** WORK WITH BUDY!!!!! ****** "]
+          [print "** WOERK NOT TOGETHER"]
         ]
 
         ;find closest depot if you do not have resources
@@ -362,7 +372,18 @@ to execute-actions
         face closest-depot
         fd 1
       ]
-      if item 0 intentions = "pick up resources" [ set belief_carrying_resources 10 ]
+      if item 0 intentions = "pick up resources" [
+        ; check the amount of resources for this depot
+        let resources_left [resources] of other depots-here
+        if item 0  resources_left >= 10 [
+          ; if there are enought resources left
+          set belief_carrying_resources 10
+          ask other depots-here [
+            set resources resources - 10
+            set plabel resources
+          ]
+        ]
+      ]
       if item 0 intentions = "find building spot" [
         if length belief_costline_patches > 0 [
           let closest-coastline item 0 sort-by [ distance ?1 < distance ?2 ] belief_costline_patches
@@ -581,9 +602,7 @@ to draw-bd-antennas [ bd ]
 end
 
 to-report find-budies [ bd ]
-
   let potential_budies builders_nearby with [ belief_working_alone = true and belief_carrying_resources > 0 and length choosen_shortline > 0 ]
-
   let final_budy_list []
   foreach [self] of potential_budies [
      let patch_budy [ patch-here ] of ?
@@ -715,7 +734,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-3
+15
 1
 1
 NIL
