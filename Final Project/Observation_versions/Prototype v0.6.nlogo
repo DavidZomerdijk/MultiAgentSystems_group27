@@ -480,32 +480,26 @@ to move-random [ builder ]
           let random_dir random 1
           ;with this variable we can determine wether an agent heads left or right x degrees.
           let random_dir2 1
+
           if random_dir = 1 [ set random_dir2 -1]
 
           ;if on bumps on the northern side of the grid one the basis of the direction move x degrees to left or right
           ifelse ycor + 1 > max-pycor
-            [ifelse  heading < 91
-              [ set heading heading + 90 + random 50 ]
-              [ set heading heading  - 90 - random 50]
-            ]
+              [ set heading  90 + random 180 ]
+
           ;if on bumps on the southern side of the grid one the basis of the direction move x degrees to left or right
           [ ifelse ycor - 1 < min-pycor
-            [ifelse heading > 360
-              [ set heading heading + 90 + random 50]
-              [ set heading heading - 90 - random 50]
-            ]
+              [ set heading 270 + random 180]
 
+          ;if one bumps on the western side of the wall
           [ifelse xcor - 1 < min-pxcor
-            [ ifelse heading > 270
-              [ set heading heading + 90 + random 50 ]
-              [ set heading heading - 90 - random 50]
-            ]
-            [set heading heading + random_dir2 * 90 + random_dir2 * random 50 ]
+              [ set heading 0 + random 180 ]
+
+               [set heading heading + random_dir2 * 90 + random_dir2 * random 80 ]
             ]
           ]
         ]
-    ]
-    if visualize_vision [ ask [ antennas ] of builder [ die ] ]
+     ]
   ]
 end
 
@@ -594,7 +588,7 @@ end
 
 ; determine whether I am at the shoreline, returning true/false
 to-report atShoreline [ bd ]
-  ifelse any? neighbors4 with [ pcolor = coastline_color ]
+  ifelse any? neighbors4 with [ pcolor = coastline_color ] or any? neighbors4 with [ pcolor = red ]
   [ report true ]
   [ report false ]
 
