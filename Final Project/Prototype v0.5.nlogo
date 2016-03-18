@@ -413,6 +413,7 @@ to update-intentions
           if-else length choosen_shortline > 0
           [
             ; if you have chooses a building spot go there
+            ; David! I added this IF-ELSE to prevent the issue we had previously that a builder "get's stuck at the shoreline"
             ; but each time check whether the building spot is not yet filled by somebody else in the mean time
             if-else [ pcolor != coastline_color ] of first choosen_shortline [
               ; select a building spot
@@ -506,7 +507,7 @@ to execute-actions
       ]
 
       if item 0 intentions =  "refill depot" [
-        ; NEEDS IMPLEMENTION, WHAT ARE WE GOING TO DO IF THE DEPOTS ARE ALL EMPTY AND BUILDER IS AT DEPOT?
+        ; NEEDS IMPLEMENTATION, WHAT ARE WE GOING TO DO IF THE DEPOTS ARE ALL EMPTY AND BUILDER IS AT DEPOT?
         ; Two possibilities
         ; (1) OR AGENT IS AT THE DEPOT
         ; (2) OR AGENT IS ON HIS WAY TO DEPOT
