@@ -233,6 +233,12 @@ to update-beliefs
     if not belief_all_depots_found [
       set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
     ]
+    ; update beliefs about the location of the main depot
+    if length beliefs_maindepot = 0 [
+      set beliefs_maindepot remove-duplicates sentence beliefs_maindepot [ self ] of observations with [ any? maindepots-here ]
+    ]
+
+    ; ******** ADDED CODE*******
     ; remove empty depot location from beliefs over depots
     if found_empty_depot [
 
@@ -305,8 +311,6 @@ end
 ; update intentions of the builder
 to update-intentions
   ask builders [
-   ;;;;;;;;;;;;;;;;;;;;;;;;;; ********************   EXPLORE WORLD ************************* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   ;explore the world to find all the depots and shortlines
     if item 0 desires = "find depots and shoreline" [
       ; so we know we haven't yet found all depots and the complete shoreline
       ifelse just_found_shoreline and not belief_coast_line_complete [
@@ -447,12 +451,6 @@ to update-intentions
                print intentions
             ]
             [
-              ; keep intention, still need to refill the depot
-              ask belief_depot_to_refill [ set resources resources + 2]
-              print "Filling up...."
-              if [ resources >= resources-per-depot ] of belief_depot_to_refill [
-                 set refilled_depot true
-              ]
             ]
 
           ]
@@ -540,6 +538,9 @@ to execute-actions
          set found_empty_depot true
          set p_empty_depot patch-here
          set do_reconsider true
+
+
+
         ]
       ]
       if item 0 intentions = "find building spot" [
@@ -578,14 +579,12 @@ to execute-actions
       ]
 
       if item 0 intentions =  "refill depot" [
-        ; NEEDS IMPLEMENTATION, WHAT ARE WE GOING TO DO IF THE DEPOTS ARE ALL EMPTY AND BUILDER IS AT DEPOT?
-        ; Two possibilities
-        ; (1) OR AGENT IS AT THE DEPOT
-        ; (2) OR AGENT IS ON HIS WAY TO DEPOT
-
+        ask belief_depot_to_refill [ set resources resources + 2]
+        print "Filling up...."
+        if [ resources >= resources-per-depot ] of belief_depot_to_refill [
+          set refilled_depot true
+        ] ; end if check if resources-per-depot are high enought
       ]
-
-
     ] ; end ifelse "build embankment"
 
 ]  ; end ask builders
@@ -836,16 +835,6 @@ to draw-bd-antennas [ bd ]
   display
 end
 
-
-
-
-
-
-
-
-
-
-;;;;;;;;;;;;; **************************** experimental work for communication between agents, which never worked properly ********************
 to-report find-budies [ bd ]
   let potential_budies builders_nearby with [ belief_working_alone = true and belief_carrying_resources > 0 and length choosen_shortline > 0 ]
   let final_budy_list []
