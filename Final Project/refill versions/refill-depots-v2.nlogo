@@ -246,7 +246,7 @@ to update-beliefs
       if not member? p_empty_depot beliefs_empty_depots [
         set beliefs_empty_depots fput p_empty_depot beliefs_empty_depots
       ]
-      set found_empty_depot false
+      ;set found_empty_depot false
     ]
 
 
@@ -362,7 +362,7 @@ to update-intentions
 
        if item 0 intentions = "find closest depot" [
          ; we end up here, if the depot we wanted to go to has no resources anymore, find a new depot
-         if length beliefs_depots = 0 [
+         if length beliefs_depots = 0 or found_empty_depot [
            ; so there is no depot left with resources, set intentions to "something" else
            ; NOTE, we're not deleting the last INTENTION, but put a new intention in front of the list/stack
            ; which means, we can re-activate the previous intention after we achieved this intention
@@ -384,13 +384,9 @@ to update-intentions
        ]
        if item 0 intentions = "pick up resources" [
 
-           ; make sure that there is still another depot with resources
-           ifelse length beliefs_depots > 0 [
-             set intentions remove item 0 intentions intentions
-             set intentions fput "find closest depot" intentions
-           ]
-           [  ; ok, no other depot with resources left, change intention
+             ; ok, no other depot with resources left, change intention
               ; and again note, we're stacking the intentions, the "old" one is not lost
+              ;set intentions remove item 0 intentions intentions
               set intentions fput "refill depot" intentions
               ; same story as above, agent needs to know which depot to refill, therefore we update the belief
               ; about which depot to refill here
@@ -399,11 +395,12 @@ to update-intentions
                 set belief_depot_to_refill depo
               ]
               [
-                set closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
                 let depo one-of depots-on closest-depot
                 set belief_depot_to_refill depo
+                set closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
+
               ]
-           ]
+
        ]
 
        if first intentions = "go to building spot" [
@@ -512,9 +509,11 @@ to execute-actions
         ; IT IS POSSIBLE THAT WE END UP HERE BUT THE BELIEFS ABOUT THE DEPOTS ARE EMPTY
         ; IN THAT CASE SET RECONSIDER TO TRUE
         if-else length beliefs_depots > 0 [
+
           set closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
           face closest-depot
           fd 1
+
         ]
         [
           set do_reconsider true
@@ -538,7 +537,6 @@ to execute-actions
          set found_empty_depot true
          set p_empty_depot patch-here
          set do_reconsider true
-
 
 
         ]
@@ -833,56 +831,6 @@ to draw-bd-antennas [ bd ]
     ]
   ]
   display
-end
-
-to-report find-budies [ bd ]
-  let potential_budies builders_nearby with [ belief_working_alone = true and belief_carrying_resources > 0 and length choosen_shortline > 0 ]
-  let final_budy_list []
-  foreach [self] of potential_budies [
-     let patch_budy [ patch-here ] of ?
-     ; is distance form me to budy greater than certain threshold, otherwise I am not allowed to coorporate with hem/her
-     if  distance-nowrap patch_budy > coorperation_threshold [
-       set final_budy_list fput ? final_budy_list
-     ]
-   ] ; end foreach
-   report sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] final_budy_list
-
-end
-
-to-report work-with-budy? [ bd budy ]
-
-  print budy
-  ; get patch where budy is situated
-  let patch_budy [patch-here] of budy
-  let shore_line_patch [ item 0 choosen_shortline ] of budy
-  ; compute distance between "me" and budy
-  let dist_to_budy distance-nowrap patch_budy
-  ; compute distance between budy and shoreline
-  let dist_budy_to_shoreline [ distance-nowrap patch_budy ] of shore_line_patch
-  ; total distance before I would "get my next reward" if I would help budy
-  ; NOTE: because the distance to the shoreline will be travelled in "speed" speed_carry_together,
-  ; we use the invers of that factor (because it's < 1) to calc the total distance from budy to shoreline
-  let total_dist_with_budy ( dist_to_budy + ( ( 1 / speed_carry_together) * dist_budy_to_shoreline ) )
-
-  ; now calculate the distance if I would pick-up a patch at the nearest depot and then go to the shoreline
-  ; the last part is an approximation
-  let closest-coastline item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] belief_costline_patches
-  let new_closest-depot item 0 sort-by [ distance-nowrap ?1 < distance-nowrap ?2 ] beliefs_depots
-  ; ok, my distance to closest depot
-  let dist_to_depot distance-nowrap new_closest-depot
-  let dist_depot_to_shoreline [ distance-nowrap closest-depot ] of closest-coastline
-  let total_dist_alone ( dist_to_depot + ( ( 1 / speed_carry_alone) * dist_depot_to_shoreline) )
-
-  ifelse total_dist_alone > total_dist_with_budy [
-    ; YES, work together with budy
-      print (word total_dist_alone " > "  total_dist_with_budy)
-      report true
-  ]
-  [
-    ; NO, just work alone, you're better off
-    report false
-  ]
-
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
