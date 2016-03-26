@@ -11,7 +11,21 @@
 
 ; dit is een algemene todo - maar voor later - we moeten wat hardcoded dingen eruit halen en een betere visualisatie maken
 
-extensions [array table]
+;go function for
+to go
+  let i 0
+  while [i < 5 ] ; here we run the model 5 times
+      [
+        set i i + 1
+        setup
+        while [ ]
+        [go2]
+
+      ]
+
+end
+
+extensions [array table csv]
 
 
 breed [builders builder]
@@ -29,7 +43,6 @@ globals [visualize_vision
          terrain-color ; color of the terrein where agent can walk...sand
          total_num_shore_patches
         ]
-
 
 
 builders-own [ belief_explored_patches
@@ -104,18 +117,18 @@ to setup-builders
 
 end
 
+; initialize the depots
 to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
     set color red
-    set size 7
+    set size 3
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
-      and pxcor < floor (max-pxcor / 2) and not any? depots-here ]
+      and pxcor < floor (- max-pxcor / 4) and not any? depots-here ]
     set heading 0
   ]
 end
-
 ;; set up the basic environment with the coastline
 to setup-coastline
 
@@ -172,7 +185,7 @@ to setup-coastline
 
 end
 
-to go
+to go2
   ; we deliberately implemented the following BDI model
   ; (1) first observ
   ; (2) based on observations (and observations of others send/receive messages) update your beliefs
@@ -586,11 +599,11 @@ end
 GRAPHICS-WINDOW
 412
 15
-1174
-798
-150
-150
-2.5
+1066
+690
+80
+80
+4.0
 1
 10
 1
@@ -600,10 +613,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--150
-150
--150
-150
+-80
+80
+-80
+80
 1
 1
 1
