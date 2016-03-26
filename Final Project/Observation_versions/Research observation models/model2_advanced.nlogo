@@ -140,7 +140,7 @@ to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
     set color red
-    set size 3
+    set size 5
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (- max-pxcor / 4) and not any? depots-here ]
@@ -652,11 +652,11 @@ end
 GRAPHICS-WINDOW
 391
 12
-887
-769
-40
+1365
+527
+120
 60
-6.0
+4.0
 1
 10
 1
@@ -666,8 +666,8 @@ GRAPHICS-WINDOW
 0
 0
 1
--40
-40
+-120
+120
 -60
 60
 1

@@ -59,7 +59,7 @@ to go
   let count_var 0
   let output_data []
   let temp_list []
-  while [i < 10 ] ; here we run the model 5 times
+  while [i < 50 ] ; here we run the model 5 times
       [
         set i i + 1
         setup
@@ -69,14 +69,14 @@ to go
         while [ not_finished ] ;coastline observed and all patches found
         [ go2
 
-          set count_var count_var + 1
+          set count_var count_var + 50
           ]
         set temp_list lput count_var []
         set output_data lput temp_list output_data
 
       ]
 
-      csv:to-file "my_data_model3.csv" output_data
+      csv:to-file "model1_simple_small_map__4__agents.csv" output_data
    stop
 
 end
@@ -119,10 +119,10 @@ to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
     set color red
-    set size 7
+    set size 5
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
-      and pxcor < floor (max-pxcor / 2) and not any? depots-here ]
+      and pxcor < floor (- max-pxcor / 4) and not any? depots-here ]
     set heading 0
   ]
 end
@@ -588,11 +588,11 @@ end
 GRAPHICS-WINDOW
 391
 12
-1188
-830
+1363
+526
+120
 60
-60
-6.51
+4.0
 1
 10
 1
@@ -602,8 +602,8 @@ GRAPHICS-WINDOW
 0
 0
 1
--60
-60
+-120
+120
 -60
 60
 1
