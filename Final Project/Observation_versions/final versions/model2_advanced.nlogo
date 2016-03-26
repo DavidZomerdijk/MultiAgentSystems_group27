@@ -47,6 +47,7 @@ builders-own [ belief_explored_patches
   ;gives hierarchy if found coastline while still desire is exploring the world
   msg_out_I_found_shoreline
   msg_in_b_I_found_shoreline
+  ;a boolean variable to check whether no one has found tea
   belief_no_agents_found_coast
 
    ]
@@ -108,7 +109,8 @@ to setup-builders
   ]
 
 end
-; initialize the depots
+
+; initialize the depots, they are placed randomly to a patch on the left side of the grid
 to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
@@ -271,6 +273,8 @@ to update-desires
       set desires fput "build embankment" desires
     ]
 
+    ;when everything is build, the only thing the workers desire is a cold beer with it's buddies.
+    ;conseq
     if length belief_costline_patches = 0 and belief_coast_line_complete
     [ set desires []
       set desires fput "drink beer with working buddies" desires
@@ -360,7 +364,7 @@ to update-intentions
         ; you have resources but you are not arrived yet
         if-else length choosen_shortline > 0
         [
-           ;fix bug
+           ;this fixes a bug we had where an agent get's stuck at the coastline
           if-else [ pcolor != coastline_color ] of first choosen_shortline [
               ; select a building spot
               set intentions remove item 0 intentions intentions
@@ -370,9 +374,6 @@ to update-intentions
               set intentions remove item 0 intentions intentions
               set intentions lput "go to building spot" intentions
             ]
-          ; if you have chooses a building spot go there
-          set intentions remove item 0 intentions intentions
-          set intentions lput "go to building spot" intentions
         ]
         [
           ; select a building spot
@@ -551,7 +552,7 @@ to send-messages [ bd ]
   set msg_out_I_found_shoreline agents_that_found_coastline
   set msg_in_b_I_found_shoreline []
 
-
+  ;sends if it found the shoreline
   if  length msg_out_I_found_shoreline > 0 [
     ask builders [ set msg_in_b_I_found_shoreline remove-duplicates sentence msg_in_b_I_found_shoreline [ msg_out_I_found_shoreline ] of bd ]
   ]
@@ -588,6 +589,9 @@ ask builders [
 
 
   ;this part is for negotiation about the observation
+  ;this is only necessary when multiple people observe the coastline at the same tick for the first time.
+  ;the person highest in hierarchy will say it has found the shoreline first and the other has to give up his credit
+  ;this is necessary to decide on who will continue to explore and who will start building the embankment
   if length msg_out_I_found_shoreline > 0 and belief_no_agents_found_coast [
     set agents_that_found_coastline remove-duplicates sentence agents_that_found_coastline msg_in_b_I_found_shoreline
   ]
@@ -609,7 +613,6 @@ end
 to draw-vac-antennas [ bd ]
 
   ; update my radius (needed for the antennas)
-
   ask myradius [
     sprout-antennas 1 [
     set shape "dot"
@@ -625,11 +628,11 @@ end
 GRAPHICS-WINDOW
 391
 12
-886
-767
-40
+1188
+830
 60
-6.0
+60
+6.51
 1
 10
 1
@@ -639,8 +642,8 @@ GRAPHICS-WINDOW
 0
 0
 1
--40
-40
+-60
+60
 -60
 60
 1
@@ -705,7 +708,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-2
+3
 1
 1
 NIL
@@ -780,8 +783,8 @@ MONITOR
 227
 363
 272
-Beliefs of depots builder 0
-[beliefs_depots] of builder 70
+Beliefs of depots builder 1
+[beliefs_depots] of builder min [ who ] of builders
 17
 1
 11
@@ -792,7 +795,7 @@ MONITOR
 153
 363
 Intentions of builder 109
-[intentions] of builder 70
+[intentions] of builder min [ who ] of builders
 17
 1
 11
@@ -802,8 +805,8 @@ MONITOR
 274
 364
 319
-Beliefs of shoreline builder
-[belief_costline_patches] of builder 70
+Beliefs of shoreline builder 1
+[belief_costline_patches] of builder min [ who ] of builders
 17
 1
 11
@@ -813,41 +816,74 @@ MONITOR
 363
 364
 408
-NIL
-[beliefs_depots] of builder 71
+Beliefs builder 1
+[beliefs_depots] of builder min [ who ] of builders
 17
 1
 11
 
 MONITOR
-10
-409
-363
-454
-Beliefs of shoreline builder 71
-[belief_costline_patches] of builder 71
+212
+507
+356
+552
+Intention of builder 2
+[intentions] of builder min [ who + 1 ] of builders
 17
 1
 11
 
 MONITOR
-10
-453
 154
-498
-Intention of builder
-[intentions] of builder 71
+319
+363
+364
+message out wrt depots builder1
+[msg_out_b_depots] of builder min [ who ] of builders
 17
 1
 11
 
 MONITOR
-155
-321
-363
-366
-NIL
-[msg_out_b_depots] of builder 70
+11
+410
+360
+455
+Desires builder 1
+[desires] of builder min [ who ] of builders
+17
+1
+11
+
+MONITOR
+9
+507
+204
+552
+desires builder 2
+[desires] of builder min [ who + 1] of builders
+17
+1
+11
+
+MONITOR
+11
+566
+205
+611
+desires builder 3
+[desires] of builder min [ who + 2] of builders
+17
+1
+11
+
+MONITOR
+211
+565
+358
+610
+Intention builder 3
+[intentions] of builder min [ who + 2 ] of builders
 17
 1
 11
