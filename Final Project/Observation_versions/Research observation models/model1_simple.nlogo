@@ -64,19 +64,19 @@ to go
         set i i + 1
         setup
         set count_var 0
-        print "yeah"
+
         set not_finished true
-        while [ not_finished ] ;coastline observed and all patches found
+        while [ not_finished and count_var < 15000 ] ;coastline observed and all patches found
         [ go2
 
-          set count_var count_var + 50
+          set count_var count_var + 1
           ]
         set temp_list lput count_var []
         set output_data lput temp_list output_data
 
       ]
 
-      csv:to-file "model1_simple_small_map__4__agents.csv" output_data
+      csv:to-file "model1_simple_small_map__6__agents.csv" output_data
    stop
 
 end
@@ -261,7 +261,6 @@ to update-desires
     [ set desires []
       set desires fput "drink beer with working buddies" desires
       set not_finished false
-      print "holy shit"
        ]
 
 
@@ -588,10 +587,10 @@ end
 GRAPHICS-WINDOW
 391
 12
-1363
-526
-120
-60
+725
+367
+40
+40
 4.0
 1
 10
@@ -602,10 +601,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--120
-120
--60
-60
+-40
+40
+-40
+40
 1
 1
 1
@@ -668,7 +667,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-4
+6
 1
 1
 NIL
