@@ -61,12 +61,11 @@ to go
   let count_var 0
   let output_data []
   let temp_list []
-  while [i < 2 ] ; here we run the model 5 times
+  while [i < 50 ] ; here we run the model 5 times
       [
         set i i + 1
         setup
         set count_var 0
-        print "yeah"
         set not_finished true
         while [ not_finished ] ;coastline observed and all patches found
         [ go2
@@ -77,7 +76,7 @@ to go
         set output_data lput temp_list output_data
 
       ]
-      csv:to-file "my_data_model2.csv" output_data
+      csv:to-file "advanced_2_small_grid_4_agents.csv" output_data
    stop
 end
 
@@ -140,7 +139,7 @@ to setup-depots
   create-depots amount-of-depots [
     set shape "factory"
     set color red
-    set size 3
+    set size 5
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (- max-pxcor / 4) and not any? depots-here ]
@@ -652,11 +651,11 @@ end
 GRAPHICS-WINDOW
 391
 12
-887
-769
+725
+527
 40
 60
-6.0
+4.0
 1
 10
 1
@@ -732,7 +731,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-2
+4
 1
 1
 NIL
@@ -1255,7 +1254,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
