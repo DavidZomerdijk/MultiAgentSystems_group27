@@ -67,7 +67,7 @@ to go
         setup
         set count_var 0
         set not_finished true
-        while [ not_finished ] ;coastline observed and all patches found
+        while [ not_finished and count_var < 15000 ] ;coastline observed and all patches found
         [ go2
 
           set count_var count_var + 1
@@ -76,7 +76,7 @@ to go
         set output_data lput temp_list output_data
 
       ]
-      csv:to-file "advanced_2_small_grid_4_agents.csv" output_data
+      csv:to-file "advanced_2_small_grid_2_agents.csv" output_data
    stop
 end
 
@@ -652,9 +652,9 @@ GRAPHICS-WINDOW
 391
 12
 725
-527
+367
 40
-60
+40
 4.0
 1
 10
@@ -667,8 +667,8 @@ GRAPHICS-WINDOW
 1
 -40
 40
--60
-60
+-40
+40
 1
 1
 1
@@ -731,7 +731,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-4
+2
 1
 1
 NIL
