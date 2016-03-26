@@ -76,7 +76,7 @@ to go
 
       ]
 
-      csv:to-file "model1_simple_small_map__6__agents.csv" output_data
+      csv:to-file "model1_simple_small_map__2__agents.csv" output_data
    stop
 
 end
@@ -667,7 +667,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-6
+2
 1
 1
 NIL

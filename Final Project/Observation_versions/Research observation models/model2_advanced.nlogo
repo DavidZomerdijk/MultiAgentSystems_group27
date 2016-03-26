@@ -61,14 +61,13 @@ to go
   let count_var 0
   let output_data []
   let temp_list []
-  while [i < 2 ] ; here we run the model 5 times
+  while [i < 50 ] ; here we run the model 5 times
       [
         set i i + 1
         setup
         set count_var 0
-        print "yeah"
         set not_finished true
-        while [ not_finished ] ;coastline observed and all patches found
+        while [ not_finished and count_var < 15000 ] ;coastline observed and all patches found
         [ go2
 
           set count_var count_var + 1
@@ -77,7 +76,7 @@ to go
         set output_data lput temp_list output_data
 
       ]
-      csv:to-file "my_data_model2.csv" output_data
+      csv:to-file "advanced_2_small_grid_2_agents.csv" output_data
    stop
 end
 
@@ -652,10 +651,10 @@ end
 GRAPHICS-WINDOW
 391
 12
-1365
-527
-120
-60
+725
+367
+40
+40
 4.0
 1
 10
@@ -666,10 +665,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--120
-120
--60
-60
+-40
+40
+-40
+40
 1
 1
 1
@@ -1255,7 +1254,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
