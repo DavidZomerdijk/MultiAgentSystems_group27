@@ -84,8 +84,6 @@ to setup-builders
   set speed_carry_alone 0.2
   set speed_carry_together 0.7
   set speed_w_carry 1
-  ;set visualize_vision false
-
 
   create-builders amount-of-workers [
     set belief_coast_line_complete false
@@ -205,7 +203,7 @@ to go
   ; (4) update your intentions based on the new desires
   ; (5) interact with your environment...execute actions
   do-perceive
-  if all? builders [ first desires = "have a beer" ]  [ stop ]
+  if all? builders [ first desires = "have a beer" ]  and total_num_shore_patches <= 0 [ stop ]
   update-beliefs
   update-desires
   update-intentions
@@ -304,9 +302,7 @@ to update-desires
     ; finally, if the shoreline is complete and the agent just delivered the last piece of
     ; construction material, than change your desire...which we'll use as termination criteria
     if belief_coast_line_complete and belief_all_depots_found
-      and first desires = "build embankment"
-      and length belief_costline_patches = 0
-      and ( first intentions = "build embankment" or first intentions = "find building spot") [
+      and total_num_shore_patches <= 0 [
         set desires []
         set desires fput "have a beer" desires
     ]
@@ -477,7 +473,7 @@ to update-intentions
           if-else length choosen_shortline > 0
           [
             ; if you have chooses a building spot go there
-            ; David! I added this IF-ELSE to prevent the issue we had previously that a builder "get's stuck at the shoreline"
+            ; IF-ELSE to prevent the issue we had previously that a builder "get's stuck at the shoreline"
             ; but each time check whether the building spot is not yet filled by somebody else in the mean time
             if-else [ pcolor != coastline_color ] of first choosen_shortline [
               ; select a building spot
@@ -527,14 +523,13 @@ to execute-actions
       ]
       if item 0 intentions = "pick up resources" [
         ; check the amount of resources for this depot
-        ; ****** ADDED CODE *********
         ; als er niet genoeg resources zijn zeg found_empty_depot true
         let resources_left [resources] of other depots-here
         if-else item 0  resources_left >= weight_of_patch [
           ; if there are enought resources left
           set belief_carrying_resources weight_of_patch
           ask other depots-here [
-            set resources resources - weight_of_patch
+            set resources round (resources - weight_of_patch)
             set plabel resources
           ]
         ]
@@ -554,7 +549,7 @@ to execute-actions
           set choosen_shortline lput closest-coastline choosen_shortline
           face closest-coastline
 
-          ;  send messages to other agents to that they selected this patch so that they don't select that one anymore
+          ;  Note: finally not implemented, except the fact that builders walk slower if they are carrying a resource
           ifelse belief_working_alone [
             fd speed_carry_alone
           ]
@@ -579,10 +574,11 @@ to execute-actions
              set pcolor red
          ]
          set choosen_shortline []
+         set total_num_shore_patches total_num_shore_patches - 1
       ]
 
       if item 0 intentions =  "refill depot" [
-        ask belief_depot_to_refill [ set resources resources + refill-per-tick]
+        ask belief_depot_to_refill [ set resources resources + refill-per-tick ]
 
         if [ resources >= resources-per-depot ] of belief_depot_to_refill [
           set refilled_depot true
@@ -913,7 +909,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-7
+9
 1
 1
 NIL
@@ -1157,7 +1153,7 @@ PLOT
 15
 1393
 165
-Resource to build shoreline
+Resources to build shoreline
 Time
 Resources
 0.0
@@ -1180,6 +1176,24 @@ refill-per-tick
 1
 0
 Number
+
+PLOT
+1194
+192
+1394
+342
+Remaining shoreline to be build
+Time
+Length remaining
+0.0
+1000.0
+0.0
+100.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot total_num_shore_patches"
 
 @#$#@#$#@
 ## WHAT IS IT?
