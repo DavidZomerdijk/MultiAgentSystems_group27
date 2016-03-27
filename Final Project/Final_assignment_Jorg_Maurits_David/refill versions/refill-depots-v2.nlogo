@@ -1,87 +1,73 @@
-extensions [array table csv]
+; Final Assignment Multi-Agent systems 2016
+
+; David Zomderdijk/10290745
+; Maurits Bleeker/10694439
+; Jorg Sander/10881530
+
 breed [builders builder]
-breed [embankment embankment_part]
 breed [depots depot]
+
+
 ;; for development
 breed [antennas antenna ]
 undirected-link-breed [antenna-links antenna-link]
 
-globals [visualize_vision
+globals [
          time
-         coastline_color ; color of coastline
-         sea_color ; color of the sea
-         terrain-color ; color of the terrein where agent can walk...sand
-         total_num_shore_patches
-         not_finished
+         coastline_color                     ; color of coastline
+         sea_color                           ; color of the sea
+         terrain-color                       ; color of the terrein where agent can walk...sand
+         total_num_shore_patches             ; global knowlegde: the total number of shoreline patches to be discovered
+         speed_carry_alone                   ; speed of the agent when walking alone
+         speed_carry_together                ; speed of the agents when carrying an object togtehter
+         speed_w_carry                       ; speed without carrying something
+         weight_of_patch
         ]
 
-builders-own [ belief_explored_patches
-  belief_costline_patches
-  beliefs_depots
-  belief_all_depots_found
-  desires
-  intentions
-  builder_vision_angle
-  myradius
-  observations
-  belief_coast_line_complete
-  new_shoreline_patches
-  choosen_shortline
-  working_on_coastline
-  just_found_shoreline
-  msg_out_b_depots
-  msg_out_b_selected_coastline_part
-  msg_out_b_shoreline
-  msg_in_b_depots
-  msg_in_b_shoreline
-  msg_in_b_selected_coastline_part
-  belief_carrying_resources
+builders-own [
+  belief_costline_patches                ; beliefs about where the coastline is located
+  beliefs_depots                         ; beliefs about the location of the depots
+  beliefs_empty_depots                   ; beliefs about the empty depots (no resources left)
+  belief_all_depots_found                ; belief about the fact whether all depots where discovered
+  belief_depot_to_refill                 ; belief about which depot a builder is refilling with resources
+  closest-depot                          ; location of the closest depot
+  desires                                ; desires of builder
+  intentions                             ; intentions of builder
+  builder_vision_angle                   ; vision angle of builder
+  myradius                               ; the objects that the builder can perceive in its vision radius
+  observations                           ; the actual observations the builder just made
+  builders_nearby                        ; agentset of builders in my vision cone
+  mybodies                               ; NOTE: finally not used, but we leave this in in order to show that we tried this approach
+  belief_coast_line_complete             ; belief about the fact that the shore line is complete
+  new_shoreline_patches                  ; belief about just discovered shoreline patches
+  choosen_shortline                      ; this part of the shortline the agent has choosen to work on
+  just_found_shoreline                   ; belief about that fact that I just discovered some shoreline
+  belief_carrying_resources              ; belief about the fact whether the builder is carrying a resource (to the shoreline)
+  belief_working_alone                   ; Note: finally not used, but we leave this in in order to show that we tried this approach
+  found_empty_depot                      ; true if you found a depot that is true
+  p_empty_depot                          ; patch of the empty depot agent found
+  refilled_depot                         ; just refilled a depot
+  do_reconsider                          ; reconsider your intentions
+  ;         OUTGOING MESSAGES
+  msg_out_b_depots                       ; message wrt beliefs about the depots
+  msg_out_b_depots_empty                 ; message wrt beliefs about empty depots
+  msg_out_b_selected_coastline_part      ; message wrt the shoreline piece/location the builder just selected to build
+  msg_out_b_shoreline                    ; message wrt beliefs about the shoreline location
+  msg_out_b_depots_refilled              ; message wrt the depot the builder just refilled
+  ;         INCOMING MESSAGES
+  msg_in_b_depots                        ; message wrt beliefs about depots (incoming)
+  msg_in_b_depots_empty                  ; message wrt beliefs about empty depots
+  msg_in_b_shoreline                     ; message wrt beliefs about the shoreline location
+  msg_in_b_selected_coastline_part       ; message wrt the shoreline piece/location other builders have discovered
+  msg_in_b_depots_refilled               ; message wrt the depot other builders just refilled
 
-  ;-----beliefs for observation ----
-  ;used to check whether we found everything
-  belief_costline_patches_fixed
-  ;belief_found_coasline_first,
-  belief_found_coastline_first
-  ;belief hierarchy
-  belief_hierarchy
-  agents_that_found_coastline
-  ;gives hierarchy if found coastline while still desire is exploring the world
-  msg_out_I_found_shoreline
-  msg_in_b_I_found_shoreline
-  belief_no_agents_found_coast
-
-   ]
+]
 
 depots-own [ resources ]
-embankment-own [ hight ]
 
-;the go function for writing the number of ticks the model takes to build the embankment to a csv style.
-to go
-  let i 0
-  let count_var 0
-  let output_data []
-  let temp_list []
-  while [i < 50 ] ; here we run the model 5 times
-      [
-        set i i + 1
-        setup
-        set count_var 0
-        set not_finished true
-        while [ not_finished and count_var < 15000 ] ;coastline observed and all patches found
-        [ go2
-
-          set count_var count_var + 1
-          ]
-        set temp_list lput count_var []
-        set output_data lput temp_list output_data
-
-      ]
-      csv:to-file "advanced_2_big_grid_4_agents.csv" output_data
-   stop
-end
 
 to setup
-  setup_globals
+  set time 0
   clear-all
   setup-coastline
   setup-depots
@@ -90,60 +76,64 @@ to setup
   reset-timer
 end
 
-to setup_globals
-  set time 0
-end
-
 ; initialize the builders
 to setup-builders
-  set visualize_vision false
-  let hierarchy_count 1
 
-  create-builders  amount-of-workers[
+  ; set globals
 
+  set speed_carry_alone 0.2
+  set speed_carry_together 0.7
+  set speed_w_carry 1
+
+  create-builders amount-of-workers [
     set belief_coast_line_complete false
     set belief_all_depots_found false
-    ; Deze kunnen we later weer aanzetten, maar voor visualisatie van de gaze is de default handiger :)
-    ; set shape "person"
     set size 4
     set choosen_shortline []
     set beliefs_depots []
     set belief_costline_patches []
-    set belief_costline_patches_fixed []
-    set builder_vision_angle vision-angle
+    set builder_vision_angle vision-radius
     set color blue
     set desires ["find depots and shoreline"]
-
     set intentions ["explore world"]
     set msg_in_b_depots []
     set msg_in_b_selected_coastline_part []
     set msg_in_b_shoreline []
+    set msg_in_b_depots_empty []
+    set msg_in_b_depots_refilled []
     set just_found_shoreline false
     set belief_carrying_resources 0
+    set belief_working_alone true
+    set found_empty_depot false
+    set do_reconsider false
+    set p_empty_depot nobody
+    set beliefs_empty_depots []
+    set refilled_depot false
 
     move-to one-of patches with [pcolor != coastline_color
       and pxcor < floor (max-pxcor / 2) and not any? turtles-here ]
     set heading random 360
-
-    ;for oberservation part
-    set belief_found_coastline_first false
-    ;the lower the number, the higher hierarchy one has.
-    set belief_hierarchy hierarchy_count
-    set hierarchy_count hierarchy_count + 1
-    set belief_no_agents_found_coast true
+    set myradius patches in-radius vision-radius
+    if visualize_vision [ draw-bd-antennas self ]
   ]
 
 end
+
 ; initialize the depots
 to setup-depots
+
   create-depots amount-of-depots [
     set shape "factory"
     set color red
-    set size 5
+    set size 7
+
     set resources resources-per-depot
     move-to one-of patches with [pcolor != coastline_color
-      and pxcor < floor (- max-pxcor / 4) and not any? depots-here ]
+      and ( pxcor <  floor (- max-pxcor / 2) and ( pxcor < (max-pxcor - 10) or pxcor > (min-pxcor + 10) )
+      and not any? depots-here
+      and ( pycor < (max-pycor - 10) or pycor > (min-pycor + 10) ) ) ]
     set heading 0
+    set plabel resources
   ]
 end
 
@@ -153,6 +143,7 @@ to setup-coastline
   set terrain-color 44
   set coastline_color 96
   set sea_color 92
+  set weight_of_patch 10
 
   ;; first use a turtle to draw the surface of the coastline
   create-turtles 1 [
@@ -204,8 +195,7 @@ to setup-coastline
 
 end
 
-;the normel go
-to go2
+to go
   ; we deliberately implemented the following BDI model
   ; (1) first observ
   ; (2) based on observations (and observations of others send/receive messages) update your beliefs
@@ -213,22 +203,25 @@ to go2
   ; (4) update your intentions based on the new desires
   ; (5) interact with your environment...execute actions
   do-perceive
+  if all? builders [ first desires = "have a beer" ]  and total_num_shore_patches <= 0 [ stop ]
   update-beliefs
   update-desires
   update-intentions
-  ; Note, currently we stop the simulation if the world is fully explored, NEEDS TO BE CHANGED WHEN DEALING WITH PART II
+  ; Note, if all builders want to drink beer then stop
 
-  if visualize_vision [ ask builders [ draw-vac-antennas self ] ]
+  if visualize_vision [ ask builders [ draw-bd-antennas self ] ]
   execute-actions
   tick
+  set time timer
 end
 
 ; observe the environment
 to do-perceive
   ask builders [
    ; just get all the patches that I can perceive in the current position
-   set myradius patches in-radius vision-angle
+   set myradius patches in-radius vision-radius
    set observations myradius
+   set builders_nearby builders in-radius vision-radius
   ]
 end
 
@@ -242,47 +235,57 @@ to update-beliefs
 
   ask builders [
     ; update beliefs based on observations
-    set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
-    set new_shoreline_patches []
+    if not belief_all_depots_found [
+      set beliefs_depots remove-duplicates sentence beliefs_depots [ self ] of observations with [ any? depots-here ]
+    ]
+
+    ; ******** ADDED CODE*******
+    ; remove empty depot location from beliefs over depots
+    if found_empty_depot [
+
+      set beliefs_depots remove p_empty_depot beliefs_depots
+      if not member? p_empty_depot beliefs_empty_depots and p_empty_depot != nobody [
+        set beliefs_empty_depots fput p_empty_depot beliefs_empty_depots
+      ]
+      ;set found_empty_depot false
+    ]
+
+
+    if refilled_depot [
+        ; update agent beliefs because depot is REFILLED
+        ; also make sure other agents are informed
+        ; Note: could be the case that more than ONE builder are refilling the depot. Then it happens
+        ; that both have the refilled_depot flag equal to TRUE but the belief_depot_to_refill variable is already
+
+        set beliefs_depots remove-duplicates sentence beliefs_depots [ patch-here ] of belief_depot_to_refill
+        set beliefs_empty_depots remove [ patch-here ] of belief_depot_to_refill beliefs_empty_depots
+
+    ]
+
+    set new_shoreline_patches [] ; first empty the previous list with shortline patches
     set new_shoreline_patches [ self ] of observations with [ pcolor = coastline_color ]
     ; determine if we just observed a patch at the shoreline, we'll use that information in order to determine
     ; where to "go next"
     ifelse length new_shoreline_patches > 0 [ set just_found_shoreline true ] [ set just_found_shoreline false ]
-
-    ;This part is for observation negotiation
-    set agents_that_found_coastline []
-
-    if just_found_shoreline and desires = ["find depots and shoreline"] and belief_no_agents_found_coast [  set agents_that_found_coastline remove-duplicates sentence  agents_that_found_coastline  belief_hierarchy   ]
-
-    if not belief_coast_line_complete [
-      set belief_costline_patches remove-duplicates sentence belief_costline_patches new_shoreline_patches
-      ;two lists are kept, one that will be used to find patches on which needs to be build and another that still remains the same.
-      set belief_costline_patches_fixed remove-duplicates sentence belief_costline_patches_fixed new_shoreline_patches
+    if not belief_coast_line_complete [ ; only update beliefs about the coastline is belief about is not complete
+       set belief_costline_patches remove-duplicates sentence belief_costline_patches new_shoreline_patches
     ]
     ; send your observations to the other agents
     send-messages self
+
   ]
   ; read messages in order to "synchronize" own beliefs with others
   read-messages
 
-  ask builders [
-    if length belief_costline_patches_fixed >= total_num_shore_patches
+
+  ask builders [ ; update beleifs if we found all the depots and coastline patches
+    if length belief_costline_patches >= total_num_shore_patches
     [
       set belief_coast_line_complete true
     ]
-    if length beliefs_depots = amount-of-depots [
+     if length beliefs_depots = amount-of-depots [
        set belief_all_depots_found true
     ]
-
-    ;used for observation negotiation ---
-    ;here we check whether we have found the coastline first (if more agents found the coastline during the same timestep, the agent that is highest in hierarchy will continue to explore when the others start building.
-   if length agents_that_found_coastline > 0 [
-     if min agents_that_found_coastline = belief_hierarchy  [
-       set belief_found_coastline_first true
-     ]
-   ]
-
-
 ]
 end
 
@@ -291,58 +294,52 @@ to update-desires
   ask builders [
     ; we initialize every builder with the desire to explore the world
     ; if all goals are fulfilled for this desire then change the desire to build the embankment
-    ;
-    if (belief_coast_line_complete and belief_all_depots_found ) or ( belief_no_agents_found_coast = false and length beliefs_depots > 0 and belief_found_coastline_first = false )
-    [
+    if belief_coast_line_complete and belief_all_depots_found
+       and item 0 intentions = "explore world" [
       set desires []
       set desires fput "build embankment" desires
     ]
-
-    if length belief_costline_patches = 0 and belief_coast_line_complete
-    [ set desires []
-      set desires fput "drink beer with working buddies" desires
-      set not_finished false
-       ]
-
+    ; finally, if the shoreline is complete and the agent just delivered the last piece of
+    ; construction material, than change your desire...which we'll use as termination criteria
+    if belief_coast_line_complete and belief_all_depots_found
+      and total_num_shore_patches <= 0 [
+        set desires []
+        set desires fput "have a beer" desires
+    ]
   ]
 end
 
 ; update intentions of the builder
 to update-intentions
   ask builders [
-
-
-  if item 0 desires = "find depots and shoreline" [
-  ; so we know we haven't yet found all depotMI and the complete shoreline
-    ifelse just_found_shoreline and not belief_coast_line_complete and belief_found_coastline_first [
-      ; I just found a shoreline patch but am I already at the shoreline?
-      ; the first simple goal is then to go to shoreline and move along shoreline
-      ifelse atShoreline self  [
-         ; agent is already at the shoreline, so move along the shoreline
+    if item 0 desires = "find depots and shoreline" [
+      ; so we know we haven't yet found all depots and the complete shoreline
+      ifelse just_found_shoreline and not belief_coast_line_complete [
+        ; I just found a shoreline patch but am I already at the shoreline?
+        ; the first simple goal is then to go to shoreline and move along shoreline
+        ifelse atShoreline self [
+          ; agent is already at the shoreline, so move along the shoreline
+          set intentions remove item 0 intentions intentions
+          set intentions lput "move along shoreline" intentions
+          set just_found_shoreline false
+       ]
+       [
+         ; agent is not yet at the shoreline, so first move to the shoreline
          set intentions remove item 0 intentions intentions
-         set intentions lput "move along shoreline" intentions
-         set just_found_shoreline false
-      ]
+         set intentions lput "move to shoreline" intentions
+       ]
+      ] ; end if just_found_shoreline
       [
-        ; agent is not yet at the shoreline, so first move to the shoreline
-        set intentions remove item 0 intentions intentions
-        set intentions lput "move to shoreline" intentions
-      ]
-
-    ] ; end if just_found_shoreline
-    [
-      ; else if just_found_shoreline
-      ; if at shoreline and we haven't discoverd it fully yet, then keep on moving along shoreline
-      ifelse Not belief_coast_line_complete and atShoreline self and belief_found_coastline_first [
-
-         set intentions remove item 0 intentions intentions
-         set intentions lput "move along shoreline" intentions
-      ]
-      [
-
+        ; else if just_found_shoreline
+        ; if at shoreline and we haven't discoverd it fully yet, then keep on moving along shoreline
+        ifelse not belief_coast_line_complete and atShoreline self [
+          set intentions remove item 0 intentions intentions
+          set intentions lput "move along shoreline" intentions
+        ]
+        [
          ; if you're not at the coastline yet but all depots have been found but not the complete shoreline
          ; AND we already found at least a piece of shoreline then move to shoreline
-         ifelse Not belief_coast_line_complete and belief_all_depots_found and length belief_costline_patches > 0 and belief_found_coastline_first [
+         ifelse not belief_coast_line_complete and belief_all_depots_found and length belief_costline_patches > 0 [
             ; we already checked whether we're at the shoreline, not the case if we end up here
             set intentions remove item 0 intentions intentions
             set intentions lput "move to shoreline" intentions
@@ -353,43 +350,132 @@ to update-intentions
            set intentions remove item 0 intentions intentions
            set intentions lput "explore world" intentions
          ]
+        ]
+      ]  ; end ifelse just_found_shoreline
+    ] ; end-if desires = "find depots and shoreline"
 
-      ]
-
-    ]  ; end ifelse just_found_shoreline
-
-  ] ; end-if desires = "find depots and shoreline"
+  ;;;;;;;;;;;;;;;;;;;;;;;;;; ********************   BUILD EMBANKMENT ************************* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ; deduce intentions when desire is to build the embankment...the 2nd phase
   if item 0 desires = "build embankment" [
-    ; if the agent is not carrying any resources, go to a depot to get resources
-    if-else belief_carrying_resources = 0
-    [
-      if-else any? other depots-here [
-        ; when arrived at the depot, pick up resources
-        set intentions remove item 0 intentions intentions
-        set intentions lput "pick up resources" intentions
-      ]
-      [
-        ;find closest depot if you do not have resources
-        set intentions remove item 0 intentions intentions
-        set intentions lput "find closest depot" intentions
-      ]
-    ]
-    [
-      ; you have resources at the moment
-      if-else patch-ahead 1 != nobody and [pcolor = coastline_color] of patch-ahead 1
-      [
-        ;find you are arrived at the coastline where you want to build
-        set intentions remove item 0 intentions intentions
-        set intentions lput "build embankment" intentions
+    ; NOTE, the agent needs to reconsider its intentions when e.g. the beliefs about the depots has shrinked to "zero"
+    ;       and we're not anymore exploring the world.
+    if-else do_reconsider [
 
+       if item 0 intentions = "find closest depot" [
+         ; we end up here, if the depot we wanted to go to has no resources anymore, find a new depot
+         if length beliefs_depots = 0 or found_empty_depot [
+           ; so there is no depot left with resources, set intentions to "something" else
+           ; NOTE, we're not deleting the last INTENTION, but put a new intention in front of the list/stack
+           ; which means, we can re-activate the previous intention after we achieved this intention
+           set intentions fput "refill depot" intentions
+           ; we need to know which depot needs to be refilled. so we update the belief here.
+           ; because agent wanted to go to "closest-depot" we will set the belief about which depot to refill
+           ; to that patch, or find the closest depot
+           ifelse closest-depot != nobody [
+             let depo one-of depots-on closest-depot
+             set belief_depot_to_refill depo
+           ]
+           [
+             ; this is problematic, beliefs about depots are empty, and agents does not know where to go
+             ; in this case we send him to one of the empty depots
+
+             set beliefs_depots fput one-of beliefs_empty_depots  beliefs_depots
+           ]
+         ]
+
+       ]
+       if item 0 intentions = "pick up resources" [
+
+             ; ok, no other depot with resources left, change intention
+              ; and again note, we're stacking the intentions, the "old" one is not lost
+              ;set intentions remove item 0 intentions intentions
+              set intentions fput "refill depot" intentions
+              ; same story as above, agent needs to know which depot to refill, therefore we update the belief
+              ; about which depot to refill here
+              ifelse closest-depot != nobody [
+                let depo one-of depots-on closest-depot
+                set belief_depot_to_refill depo
+              ]
+              [
+                let depo one-of depots-on closest-depot
+                set belief_depot_to_refill depo
+                set closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
+
+              ]
+
+       ]
+
+       if first intentions = "go to building spot" [
+         ; we end up here if the builder is on his way to the shoreline but in the mean time all depots are empty
+         ; we are going to put ONE belief (random) back into his belief list about the depots because we want the
+         ; builder to return to that depot, discover that the depot is empty and refill that depot
+         if length beliefs_depots = 0 [
+            set beliefs_depots fput one-of beliefs_empty_depots  beliefs_depots
+         ]
+
+       ]
+       set do_reconsider false
+       ; end do reconsider
+
+    ] ; end do reconsider
+
+    [
+      ; if the agent is not carrying any resources, go to a depot to get resources
+      if-else belief_carrying_resources = 0
+      [
+        ; here the agent does not have any resources, it needs to get one at the depot
+        ;let amount_of_resources [resources] of other depots-here
+        if-else any? other depots-here and first intentions !=  "refill depot" [
+          ; when arrived at the depot, pick up resources and only if there are resources left
+          set intentions remove item 0 intentions intentions
+          set intentions lput "pick up resources" intentions
+        ]
+        [
+          ; we are not carrying anything and we're not at a depot
+          ; need to decide what to do.
+          ; (1) search for closest depot to pick up construction material or
+          ; (2) find a budy that we can help carrying the material
+          if-else first intentions = "refill depot" [
+            ; check whether the depot the agent needs to refill is filled up
+            ; NOTE, strange way of selecting the depot
+
+            if-else [ resources >= resources-per-depot ] of belief_depot_to_refill  [
+               ; update agent intention because depot is REFILLED
+               ; we just have to remove the first intention, the "former" intention is still in the list
+
+               set intentions remove item 0 intentions intentions
+               set refilled_depot false
+               set belief_depot_to_refill nobody
+
+            ]
+            [
+            ]
+
+          ]
+          [
+            ;find closest depot if you do not have resources
+            set intentions remove item 0 intentions intentions
+            set intentions lput "find closest depot" intentions
+          ]
+        ]
       ]
       [
-        ; you have resources but you are not arrived yet
-        if-else length choosen_shortline > 0
+        ; you have resources at the moment
+        if-else patch-ahead 1 != nobody and [pcolor = coastline_color] of patch-ahead 1
         [
-           ;fix bug
-          if-else [ pcolor != coastline_color ] of first choosen_shortline [
+          ;find you are arrived at the coastline where you want to build
+          set intentions remove item 0 intentions intentions
+          set intentions lput "build embankment" intentions
+
+        ]
+        [
+          ; you have resources but you are not arrived yet
+          if-else length choosen_shortline > 0
+          [
+            ; if you have chooses a building spot go there
+            ; IF-ELSE to prevent the issue we had previously that a builder "get's stuck at the shoreline"
+            ; but each time check whether the building spot is not yet filled by somebody else in the mean time
+            if-else [ pcolor != coastline_color ] of first choosen_shortline [
               ; select a building spot
               set intentions remove item 0 intentions intentions
               set intentions lput "find building spot" intentions
@@ -398,23 +484,19 @@ to update-intentions
               set intentions remove item 0 intentions intentions
               set intentions lput "go to building spot" intentions
             ]
-
+          ]
+          [
+            ; select a building spot
+            set intentions remove item 0 intentions intentions
+            set intentions lput "find building spot" intentions
+          ]
         ]
-        [
-          ; select a building spot
-          set intentions remove item 0 intentions intentions
-          set intentions lput "find building spot" intentions
-        ]
-      ]
-    ]
-  ]
-  ;-------naar de building spot gaan als ze klaar zijn.
-  if item 0 desires = "drink beer with working buddies" [
-     set intentions remove item 0 intentions intentions
-     set intentions lput "go to building spot" intentions
+      ] ; end of else: you have resources at the moment
+    ] ; end else: do reconsider
+  ] ; end if: desires = "build embankment"
 
-     ]
- ]
+
+ ]  ; end ask builders
 end
 
 to execute-actions
@@ -426,27 +508,65 @@ to execute-actions
     ]
     [
       if item 0 intentions = "find closest depot" [
-        let closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
-        face closest-depot
-        fd 1
+        ; IT IS POSSIBLE THAT WE END UP HERE BUT THE BELIEFS ABOUT THE DEPOTS ARE EMPTY
+        ; IN THAT CASE SET RECONSIDER TO TRUE
+        if-else length beliefs_depots > 0 [
+
+          set closest-depot item 0 sort-by [ distance ?1 < distance ?2 ] beliefs_depots
+          face closest-depot
+          fd 1
+
+        ]
+        [
+          set do_reconsider true
+        ]
       ]
-      if item 0 intentions = "pick up resources" [ set belief_carrying_resources 10 ]
+      if item 0 intentions = "pick up resources" [
+        ; check the amount of resources for this depot
+        ; als er niet genoeg resources zijn zeg found_empty_depot true
+        let resources_left [resources] of other depots-here
+        if-else item 0  resources_left >= weight_of_patch [
+          ; if there are enought resources left
+          set belief_carrying_resources weight_of_patch
+          ask other depots-here [
+            set resources round (resources - weight_of_patch)
+            set plabel resources
+          ]
+        ]
+        [
+         ; depot is nearly empty, remember the patch of the depot, because we'll delete it from the beliefs over depots
+         set found_empty_depot true
+         set p_empty_depot patch-here
+         set do_reconsider true
+
+
+        ]
+      ]
       if item 0 intentions = "find building spot" [
         if length belief_costline_patches > 0 [
           let closest-coastline item 0 sort-by [ distance ?1 < distance ?2 ] belief_costline_patches
           set choosen_shortline []
           set choosen_shortline lput closest-coastline choosen_shortline
-          set working_on_coastline closest-coastline
           face closest-coastline
 
-          ;  send messages to other agents to that they selected this patch so that they don't select that one anymore
-          fd 1
+          ;  Note: finally not implemented, except the fact that builders walk slower if they are carrying a resource
+          ifelse belief_working_alone [
+            fd speed_carry_alone
+          ]
+          [
+            fd speed_carry_together
+          ]
         ]
 
       ]
       if item 0 intentions = "go to building spot" [
         face item 0 choosen_shortline
-        fd 1
+        ifelse belief_working_alone [
+          fd speed_carry_alone
+        ]
+        [
+          fd speed_carry_together
+        ]
       ]
       if item 0 intentions = "build embankment" [
          set belief_carrying_resources 0
@@ -454,10 +574,21 @@ to execute-actions
              set pcolor red
          ]
          set choosen_shortline []
+         set total_num_shore_patches total_num_shore_patches - 1
       ]
-    ]
-]
-end
+
+      if item 0 intentions =  "refill depot" [
+        ask belief_depot_to_refill [ set resources resources + refill-per-tick ]
+
+        if [ resources >= resources-per-depot ] of belief_depot_to_refill [
+          set refilled_depot true
+        ] ; end if check if resources-per-depot are high enought
+      ]
+    ] ; end ifelse "build embankment"
+
+]  ; end ask builders
+
+end ; execute-actions
 
 ; try to move to shoreline, choose the costline patch that is closest for you
 ; could be improved because could be that suddently all builders head to the same location...for later if we have time
@@ -501,11 +632,11 @@ to move-random [ builder ]
     let obstacle true
 
     while[obstacle] [
-    set target_patch patch-ahead 1
-    if target_patch != nobody
+      set target_patch patch-ahead 1
+      if target_patch != nobody
           [face target_patch ]
 
-    ifelse target_patch != nobody and not any? turtles-on target_patch and [pcolor] of target_patch != coastline_color and [pcolor] of target_patch != red
+      ifelse target_patch != nobody and not any? turtles-on target_patch and [pcolor] of target_patch != coastline_color
           [
           set obstacle false
           move-to target_patch
@@ -516,26 +647,33 @@ to move-random [ builder ]
           let random_dir random 1
           ;with this variable we can determine wether an agent heads left or right x degrees.
           let random_dir2 1
-
           if random_dir = 1 [ set random_dir2 -1]
 
           ;if on bumps on the northern side of the grid one the basis of the direction move x degrees to left or right
           ifelse ycor + 1 > max-pycor
-              [ set heading  90 + random 180 ]
-
+            [ifelse  heading < 91
+              [ set heading heading + 90 + random 50 ]
+              [ set heading heading  - 90 - random 50]
+            ]
           ;if on bumps on the southern side of the grid one the basis of the direction move x degrees to left or right
           [ ifelse ycor - 1 < min-pycor
-              [ set heading 270 + random 180]
+            [ifelse heading > 360
+              [ set heading heading + 90 + random 50]
+              [ set heading heading - 90 - random 50]
+            ]
 
-          ;if one bumps on the western side of the wall
           [ifelse xcor - 1 < min-pxcor
-              [ set heading 0 + random 180 ]
-
-               [set heading heading + random_dir2 * 90 + random_dir2 * random 80 ]
+            [ ifelse heading > 270
+              [ set heading heading + 90 + random 50 ]
+              [ set heading heading - 90 - random 50]
+            ]
+            [set heading heading + random_dir2 * 90 + random_dir2 * random 50 ]
             ]
           ]
         ]
-     ]
+    ] ; end while obstacle
+
+    if visualize_vision [ ask [ antennas ] of builder [ die ] ]
   ]
 end
 
@@ -552,13 +690,20 @@ to send-messages [ bd ]
   set msg_out_b_shoreline [ self ] of observations with [ pcolor = coastline_color ]
   set msg_out_b_selected_coastline_part choosen_shortline
 
-  ;Here we send information on whether we
+  set msg_out_b_depots_empty []
+  set msg_out_b_depots_refilled []
 
+  if refilled_depot [
+     set msg_out_b_depots_refilled fput [ patch-here ] of belief_depot_to_refill msg_out_b_depots_refilled
+  ]
 
+  ;set msg_out_b_selected_coast_line_part [ self ]
   ; combine your observations with the incoming message queue of OTHER builders
   if length msg_out_b_depots > 0 [
     ask other builders [ set msg_in_b_depots remove-duplicates sentence msg_in_b_depots [msg_out_b_depots] of bd ]
   ]
+
+
   if-else not belief_coast_line_complete [
     if length msg_out_b_shoreline > 0 [
       ask other builders [ set msg_in_b_shoreline remove-duplicates sentence msg_in_b_shoreline [ msg_out_b_shoreline ] of bd ]
@@ -572,28 +717,30 @@ to send-messages [ bd ]
     ask builders [ set msg_in_b_selected_coastline_part remove-duplicates sentence msg_in_b_selected_coastline_part [ msg_out_b_selected_coastline_part ] of bd ]
   ]
 
-  ;for observation negotiation
-  set msg_out_I_found_shoreline []
-  set msg_out_I_found_shoreline agents_that_found_coastline
-  set msg_in_b_I_found_shoreline []
-
-
-  if  length msg_out_I_found_shoreline > 0 [
-    ask builders [ set msg_in_b_I_found_shoreline remove-duplicates sentence msg_in_b_I_found_shoreline [ msg_out_I_found_shoreline ] of bd ]
+  ; if I found an empty depot, send messages to others
+  if p_empty_depot != nobody [
+    set msg_out_b_depots_empty p_empty_depot
+    ask other builders [ set msg_in_b_depots_empty remove-duplicates sentence msg_in_b_depots_empty [ msg_out_b_depots_empty ] of bd ]
+    set p_empty_depot nobody
   ]
+
+  if length msg_out_b_depots_refilled > 0 [
+     ask other builders [ set msg_in_b_depots_refilled remove-duplicates sentence msg_in_b_depots_refilled [ msg_out_b_depots_refilled ] of bd ]
+  ]
+
 end
 
-; --- Read messages ---
+; --- Send messages ---
 to read-messages
 ;combine builders belief with beliefs send by other builders
 ask builders [
-  if length msg_in_b_depots > 0  [
+  if length msg_in_b_depots > 0  and not belief_all_depots_found[
     set beliefs_depots remove-duplicates sentence beliefs_depots msg_in_b_depots
   ]
+
   if length msg_in_b_shoreline > 0 [
     set belief_costline_patches remove-duplicates sentence belief_costline_patches msg_in_b_shoreline
   ]
-
   ; recieved message from other agent about building at coastline
   if length msg_in_b_selected_coastline_part > 0 [
     ; for all incomming messeges remove them from beliefs
@@ -610,21 +757,52 @@ ask builders [
        set index index + 1
     ]
   ]
+ ]  ; end length msg_in_b_selected_coastline_part > 0
+
+ ; any message that a depot has no resources anymore?
+ if length msg_in_b_depots_empty > 0 [
+    foreach msg_in_b_depots_empty [
+       if member? ? beliefs_depots [
+         set beliefs_depots remove ? beliefs_depots
+         if not member? ? beliefs_empty_depots and ? != nobody [
+           set beliefs_empty_depots fput ? beliefs_empty_depots
+         ]
+         ; if my current intention is to pick-up a resource and I want to go to the depot that has no resources anymore
+         ; than I need to reconsider my intentions
+         if closest-depot = ? and item 0 intentions = "find closest depot" [
+           set do_reconsider true
+
+         ]
+       ]
+    ]
+    ; in any case, if all my beliefs about depots are GONE (because they have no resources anymore, THEN RECONSIDER your intentions
+    if length beliefs_depots = 0 [
+      set do_reconsider true
+    ]
+    set msg_in_b_depots_empty []
  ]
 
-
-  ;this part is for negotiation about the observation
-  if length msg_out_I_found_shoreline > 0 and belief_no_agents_found_coast [
-    set agents_that_found_coastline remove-duplicates sentence agents_that_found_coastline msg_in_b_I_found_shoreline
-  ]
-  if length belief_costline_patches > 0 [set belief_no_agents_found_coast false ]
+ ; any depots refilled? update beliefs
+ if length msg_in_b_depots_refilled > 0 [
+    foreach beliefs_empty_depots [
+      ; remove refilled depot from list of empty depots
+      if member? ? beliefs_empty_depots [
+        set beliefs_empty_depots remove ? beliefs_empty_depots
+      ]
+      ; add refilled depot to list of beliefs about depots
+      if not member? ? beliefs_depots and ? != nobody [
+        set beliefs_depots fput ? beliefs_depots
+      ]
+    ]
+    set msg_in_b_depots_refilled []
+ ]
 
 ]
 end
 
 ; determine whether I am at the shoreline, returning true/false
 to-report atShoreline [ bd ]
-  ifelse any? neighbors4 with [ pcolor = coastline_color ] or any? neighbors4 with [ pcolor = red ]
+  ifelse any? neighbors4 with [ pcolor = coastline_color ]
   [ report true ]
   [ report false ]
 
@@ -632,7 +810,7 @@ end
 
 
 ; visualize vision radius
-to draw-vac-antennas [ bd ]
+to draw-bd-antennas [ bd ]
 
   ; update my radius (needed for the antennas)
 
@@ -651,11 +829,11 @@ end
 GRAPHICS-WINDOW
 391
 12
-885
-527
+1188
+570
 60
-60
-4.0
+40
+6.51
 1
 10
 1
@@ -667,10 +845,10 @@ GRAPHICS-WINDOW
 1
 -60
 60
--60
-60
-1
-1
+-40
+40
+0
+0
 1
 ticks
 60.0
@@ -731,7 +909,7 @@ amount-of-workers
 amount-of-workers
 0
 30
-4
+9
 1
 1
 NIL
@@ -742,21 +920,21 @@ SLIDER
 160
 183
 193
-vision-angle
-vision-angle
+vision-radius
+vision-radius
 0
 360
-18
+19
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-12
-193
-184
-226
+13
+194
+185
+227
 resources-per-depot
 resources-per-depot
 0
@@ -803,80 +981,219 @@ NIL
 
 MONITOR
 11
-227
-363
-272
-Beliefs of depots builder 0
-[beliefs_depots] of builder 70
+249
+379
+294
+Beliefs wrt depots builder1
+[beliefs_depots] of builder min [ who ] of builders
 17
 1
 11
 
 MONITOR
 9
-318
+340
 153
-363
-Intentions of builder 109
-[intentions] of builder 70
+385
+Intentions of builder 1
+[intentions] of builder min [ who ] of builders
 17
 1
 11
 
 MONITOR
 9
-274
-364
-319
-Beliefs of shoreline builder
-[belief_costline_patches] of builder 70
+297
+379
+342
+Beliefs of shoreline builder 2
+[belief_costline_patches] of builder min [ who ] of builders
 17
 1
 11
 
 MONITOR
-10
-363
-364
-408
+8
+446
+380
+491
+Beliefs wrt depots builder2
+[beliefs_depots] of builder min [ who + 1 ] of builders
+17
+1
+11
+
+MONITOR
+8
+492
+380
+537
+Beliefs wrt shoreline builder 2
+[belief_costline_patches] of builder min [ who + 1 ] of builders
+17
+1
+11
+
+MONITOR
+7
+536
+151
+581
+Intention of builder 2
+[intentions] of builder min [ who + 1 ] of builders
+17
+1
+11
+
+MONITOR
+153
+341
+380
+386
+Message out wrt depots builder 1
+[msg_out_b_depots] of builder min [ who ] of builders
+17
+1
+11
+
+SLIDER
+186
+61
+365
+94
+coorperation_threshold
+coorperation_threshold
+0
+100
+20
+1
+1
 NIL
-[beliefs_depots] of builder 71
+HORIZONTAL
+
+MONITOR
+150
+537
+380
+582
+Message out wrt depots builder 2
+[msg_out_b_depots] of builder min [ who + 1 ] of builders
 17
 1
 11
 
 MONITOR
-10
-409
-363
-454
-Beliefs of shoreline builder 71
-[belief_costline_patches] of builder 71
+5
+583
+199
+628
+Belief wrt depot to be refilled builder 2
+[ belief_depot_to_refill ] of builder min [ who + 1 ] of builders
 17
 1
 11
 
 MONITOR
-10
-453
-154
-498
-Intention of builder
-[intentions] of builder 71
+199
+582
+380
+627
+Beliefs wrt empty depots builder 2
+[beliefs_empty_depots ] of builder min [ who + 1 ] of builders
 17
 1
 11
 
 MONITOR
-155
-321
-363
+9
+385
+202
+430
+Belief wrt depot to be refilled builder 1
+[ belief_depot_to_refill ] of builder min [ who ] of builders
+17
+1
+11
+
+MONITOR
+202
+385
+379
+430
+Beliefs wrt empty depots builder 1
+[beliefs_empty_depots ] of builder min [ who + 1 ] of builders
+17
+1
+11
+
+SWITCH
+187
+95
 366
-NIL
-[msg_out_b_depots] of builder 70
+128
+visualize_vision
+visualize_vision
+1
+1
+-1000
+
+MONITOR
+187
+131
+365
+176
+Time
+time
 17
 1
 11
+
+PLOT
+1193
+15
+1393
+165
+Resources to build shoreline
+Time
+Resources
+0.0
+40.0
+0.0
+250.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -955883 true "" "plot sum [resources] of depots"
+
+INPUTBOX
+188
+178
+364
+238
+refill-per-tick
+0.2
+1
+0
+Number
+
+PLOT
+1194
+192
+1394
+342
+Remaining shoreline to be build
+Time
+Length remaining
+0.0
+1000.0
+0.0
+100.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot total_num_shore_patches"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -930,19 +1247,6 @@ true
 0
 Polygon -7500403 true true 150 0 0 150 105 150 105 293 195 293 195 150 300 150
 
-beer
-true
-4
-Rectangle -1184463 true true 90 45 210 255
-Line -1 false 90 60 90 255
-Line -1 false 90 255 210 255
-Line -1 false 210 255 210 45
-Rectangle -1 true false 90 45 210 90
-Rectangle -1 true false 90 60 210 90
-Rectangle -1 true false 210 105 255 120
-Rectangle -1 true false 210 180 255 195
-Rectangle -1 true false 240 120 255 180
-
 box
 false
 0
@@ -961,6 +1265,53 @@ Circle -7500403 true true 110 127 80
 Circle -7500403 true true 110 75 80
 Line -7500403 true 150 100 80 30
 Line -7500403 true 150 100 220 30
+
+building institution
+false
+0
+Rectangle -7500403 true true 0 60 300 270
+Rectangle -16777216 true false 130 196 168 256
+Rectangle -16777216 false false 0 255 300 270
+Polygon -7500403 true true 0 60 150 15 300 60
+Polygon -16777216 false false 0 60 150 15 300 60
+Circle -1 true false 135 26 30
+Circle -16777216 false false 135 25 30
+Rectangle -16777216 false false 0 60 300 75
+Rectangle -16777216 false false 218 75 255 90
+Rectangle -16777216 false false 218 240 255 255
+Rectangle -16777216 false false 224 90 249 240
+Rectangle -16777216 false false 45 75 82 90
+Rectangle -16777216 false false 45 240 82 255
+Rectangle -16777216 false false 51 90 76 240
+Rectangle -16777216 false false 90 240 127 255
+Rectangle -16777216 false false 90 75 127 90
+Rectangle -16777216 false false 96 90 121 240
+Rectangle -16777216 false false 179 90 204 240
+Rectangle -16777216 false false 173 75 210 90
+Rectangle -16777216 false false 173 240 210 255
+Rectangle -16777216 false false 269 90 294 240
+Rectangle -16777216 false false 263 75 300 90
+Rectangle -16777216 false false 263 240 300 255
+Rectangle -16777216 false false 0 240 37 255
+Rectangle -16777216 false false 6 90 31 240
+Rectangle -16777216 false false 0 75 37 90
+Line -16777216 false 112 260 184 260
+Line -16777216 false 105 265 196 265
+
+building store
+false
+0
+Rectangle -7500403 true true 30 45 45 240
+Rectangle -16777216 false false 30 45 45 165
+Rectangle -7500403 true true 15 165 285 255
+Rectangle -16777216 true false 120 195 180 255
+Line -7500403 true 150 195 150 255
+Rectangle -16777216 true false 30 180 105 240
+Rectangle -16777216 true false 195 180 270 240
+Line -16777216 false 0 165 300 165
+Polygon -7500403 true true 0 165 45 135 60 90 240 90 255 135 300 165
+Rectangle -7500403 true true 0 0 75 45
+Rectangle -16777216 false false 0 0 75 45
 
 butterfly
 true
